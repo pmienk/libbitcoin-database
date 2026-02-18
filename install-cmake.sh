@@ -1041,6 +1041,7 @@ SECP256K1_OPTIONS=(
 BITCOIN_SYSTEM_OPTIONS=(
 "-Dwith-tests=no" \
 "-Dwith-examples=no" \
+"${with_icu}" \
 "${with_boost}" \
 "${with_pkgconfigdir}")
 
