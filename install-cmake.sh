@@ -43,6 +43,7 @@
 SECP256K1_BRANCH="v0.7.0"
 BITCOIN_SYSTEM_BRANCH="cmake-experiment"
 BITCOIN_DATABASE_BRANCH="cmake-experimental"
+BITCOIN_OWNER="pmienk"
 
 # Sentinel for comparison of sequential build.
 #------------------------------------------------------------------------------
