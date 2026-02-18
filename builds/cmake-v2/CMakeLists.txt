@@ -93,7 +93,7 @@ target_compile_options(bitcoin-database
 set_target_properties(bitcoin-database PROPERTIES
   VERSION   ${PROJECT_VERSION}
   SOVERSION ${PROJECT_VERSION_MAJOR}
-  EXPORT_NAME system
+  EXPORT_NAME database
 )
 
 # ──────────────────────────────────────────────────────────────
