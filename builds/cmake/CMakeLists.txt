@@ -204,6 +204,11 @@ if ( with-tools )
     PRIVATE
       ${initchain_SOURCES}
   )
+
+  target_link_libraries( initchain
+    PRIVATE
+      bitcoin::database
+  )
 endif()
 #------------------------------------------------------------------------------
 # Installation routine.
