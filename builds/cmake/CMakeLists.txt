@@ -11,7 +11,8 @@ project( libbitcoin-database
   DESCRIPTION "Bitcoin High Performance Blockchain Database"
   LANGUAGES C CXX )
 
-list( APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules" )
+
+set( repository_root_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../" )
 
 if ( MSVC )
   set( CMAKE_STATIC_LIBRARY_PREFIX "lib" )
@@ -89,6 +90,23 @@ if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
   check_cxx_compiler_flag( "-Wno-mismatched-tags" HAS_FLAG_WNO-MISMATCHED-TAGS )
   if ( !HAS_FLAG_WNO-MISMATCHED-TAGS )
       message( FATAL_ERROR "Compiler does not support '-Wno-mismatched-tags'." )
+  endif()
+endif()
+
+check_cxx_compiler_flag( "-Wno-ignored-attributes" HAS_FLAG_WNO-IGNORED-ATTRIBUTES )
+if ( !HAS_FLAG_WNO-IGNORED-ATTRIBUTES )
+    message( FATAL_ERROR "Compiler does not support '-Wno-ignored-attributes'." )
+endif()
+
+check_cxx_compiler_flag( "-Wno-long-long" HAS_FLAG_WNO-LONG-LONG )
+if ( !HAS_FLAG_WNO-LONG-LONG )
+    message( FATAL_ERROR "Compiler does not support '-Wno-long-long'." )
+endif()
+
+if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
+  check_cxx_compiler_flag( "-fno-var-tracking-assignments" HAS_FLAG_FNO-VAR-TRACKING-ASSIGNMENTS )
+  if ( !HAS_FLAG_FNO-VAR-TRACKING-ASSIGNMENTS )
+      message( FATAL_ERROR "Compiler does not support '-fno-var-tracking-assignments'." )
   endif()
 endif()
 
@@ -172,6 +190,21 @@ if ( with-test )
     --build_info=yes
   )
 
+  target_compile_options( libbitcoin-database-tests
+    PRIVATE
+      -Wall
+      -Wextra
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-reorder>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-field-initializers>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-braces>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-comment>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-ignored-attributes>
+      $<$<CXX_COMPILER_ID:Clang>:-Wno-mismatched-tags>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-long-long>
+      $<$<CXX_COMPILER_ID:GNU>:-fno-var-tracking-assignments>
+  )
+
   file( GLOB_RECURSE libbitcoin_database_tests_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/../../test/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../test/*.cpp"
@@ -194,6 +227,21 @@ endif()
 #------------------------------------------------------------------------------
 if ( with-tools )
   add_executable( initchain )
+
+  target_compile_options( initchain
+    PRIVATE
+      -Wall
+      -Wextra
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-reorder>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-field-initializers>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-braces>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-comment>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-ignored-attributes>
+      $<$<CXX_COMPILER_ID:Clang>:-Wno-mismatched-tags>
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-long-long>
+      $<$<CXX_COMPILER_ID:GNU>:-fno-var-tracking-assignments>
+  )
 
   file( GLOB_RECURSE initchain_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/initchain/*.c"
