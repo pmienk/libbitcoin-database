@@ -30,14 +30,14 @@ option( with-tools "Build tools." ON )
 #------------------------------------------------------------------------------
 
 if ( BUILD_SHARED_LIBS )
-  set( bitcoin-system_USE_STATIC_LIBS "OFF" )
+  set( libbitcoin-system_USE_STATIC_LIBS "OFF" )
   set( Boost_USE_STATIC_LIBS "OFF" )
 else()
-  set( bitcoin-system_USE_STATIC_LIBS "ON" )
+  set( libbitcoin-system_USE_STATIC_LIBS "ON" )
   set( Boost_USE_STATIC_LIBS "ON" )
 endif()
 
-find_package( bitcoin-system 4.0.0 REQUIRED )
+find_package( libbitcoin-system 4.0.0 REQUIRED )
 
 find_package( Boost 1.86.0 REQUIRED
   COMPONENTS
@@ -111,17 +111,17 @@ if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
 endif()
 
 #------------------------------------------------------------------------------
-# bitcoin-database library
+# libbitcoin-database library
 #------------------------------------------------------------------------------
-add_library( bitcoin-database )
-add_library( bitcoin::database ALIAS bitcoin-database )
+add_library( libbitcoin-database )
+add_library( bitcoin::database ALIAS libbitcoin-database )
 
-target_compile_features( bitcoin-database
+target_compile_features( libbitcoin-database
   PUBLIC
     cxx_std_20
 )
 
-target_compile_options( bitcoin-database
+target_compile_options( libbitcoin-database
   PRIVATE
     -Wall
     -Wextra
@@ -133,43 +133,44 @@ target_compile_options( bitcoin-database
     $<$<CXX_COMPILER_ID:Clang>:-Wno-mismatched-tags>
 )
 
-file( GLOB_RECURSE bitcoin_database_HEADERS CONFIGURE_DEPENDS
+file( GLOB_RECURSE libbitcoin_database_HEADERS CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/../../include/*.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/../../include/*.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../../include/*.ipp"
 )
 
-file( GLOB_RECURSE bitcoin_database_SOURCES CONFIGURE_DEPENDS
+file( GLOB_RECURSE libbitcoin_database_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/../../src/*.c"
   "${CMAKE_CURRENT_SOURCE_DIR}/../../src/*.cpp"
 )
 
-target_sources( bitcoin-database
+target_sources( libbitcoin-database
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../include"
     FILES
-      ${bitcoin_database_HEADERS}
+      ${libbitcoin_database_HEADERS}
   PRIVATE
-    ${bitcoin_database_SOURCES}
+    ${libbitcoin_database_SOURCES}
 )
 
-target_include_directories( bitcoin-database
+target_include_directories( libbitcoin-database
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries( bitcoin-database
+target_link_libraries( libbitcoin-database
   PUBLIC
     bitcoin::system
 )
 
-set_target_properties(bitcoin-database
+set_target_properties( libbitcoin-database
   PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
     EXPORT_NAME database
+    OUTPUT_NAME bitcoin-database
 )
 
 #------------------------------------------------------------------------------
@@ -220,15 +221,21 @@ if ( with-test )
       Boost::unit_test_framework
       bitcoin::database
   )
+
+  set_target_properties( libbitcoin-database-tests
+    PROPERTIES
+      VERSION ${PROJECT_VERSION}
+      SOVERSION ${PROJECT_VERSION_MAJOR}
+  )
 endif()
 
 #------------------------------------------------------------------------------
-# initchain executable
+# libbitcoin-database-tools executable
 #------------------------------------------------------------------------------
 if ( with-tools )
-  add_executable( initchain )
+  add_executable( libbitcoin-database-tools )
 
-  target_compile_options( initchain
+  target_compile_options( libbitcoin-database-tools
     PRIVATE
       -Wall
       -Wextra
@@ -243,19 +250,26 @@ if ( with-tools )
       $<$<CXX_COMPILER_ID:GNU>:-fno-var-tracking-assignments>
   )
 
-  file( GLOB_RECURSE initchain_SOURCES CONFIGURE_DEPENDS
+  file( GLOB_RECURSE libbitcoin_database_tools_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/initchain/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/initchain/*.cpp"
   )
 
-  target_sources( initchain
+  target_sources( libbitcoin-database-tools
     PRIVATE
-      ${initchain_SOURCES}
+      ${libbitcoin_database_tools_SOURCES}
   )
 
-  target_link_libraries( initchain
+  target_link_libraries( libbitcoin-database-tools
     PRIVATE
       bitcoin::database
+  )
+
+  set_target_properties( libbitcoin-database-tools
+    PROPERTIES
+      VERSION ${PROJECT_VERSION}
+      SOVERSION ${PROJECT_VERSION_MAJOR}
+      OUTPUT_NAME initchain
   )
 endif()
 #------------------------------------------------------------------------------
@@ -264,8 +278,8 @@ endif()
 include( GNUInstallDirs )
 include( CMakePackageConfigHelpers )
 
-install( TARGETS bitcoin-database
-  EXPORT bitcoin-database-targets
+install( TARGETS libbitcoin-database
+  EXPORT libbitcoin-database-targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -273,27 +287,27 @@ install( TARGETS bitcoin-database
   FILE_SET HEADERS
 )
 
-install( EXPORT bitcoin-database-targets
+install( EXPORT libbitcoin-database-targets
   NAMESPACE bitcoin::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bitcoin-database
-  FILE bitcoin-database-targets.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libbitcoin-database
+  FILE libbitcoin-database-targets.cmake
 )
 
 configure_package_config_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/bitcoin-database-config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/bitcoin-database-config.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bitcoin-database
+  ${CMAKE_CURRENT_SOURCE_DIR}/libbitcoin-database-config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libbitcoin-database-config.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libbitcoin-database
 )
 
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/bitcoin-database-config-version.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/libbitcoin-database-config-version.cmake"
   VERSION ${PACKAGE_VERSION}
   COMPATIBILITY AnyNewerVersion
 )
 
 install(
   FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/bitcoin-database-config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/bitcoin-database-config-version.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bitcoin-database
+    ${CMAKE_CURRENT_BINARY_DIR}/libbitcoin-database-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/libbitcoin-database-config-version.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libbitcoin-database
 )
