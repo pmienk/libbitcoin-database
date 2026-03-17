@@ -204,6 +204,11 @@ if ( with-test )
     --build_info=yes
   )
 
+  target_compile_features( libbitcoin-database-tests
+    PUBLIC
+      cxx_std_20
+  )
+
   target_compile_options( libbitcoin-database-tests
     PRIVATE
       -Wall
@@ -248,6 +253,11 @@ endif()
 #------------------------------------------------------------------------------
 if ( with-tools )
   add_executable( libbitcoin-database-tools )
+
+  target_compile_features( libbitcoin-database-tools
+    PUBLIC
+      cxx_std_20
+  )
 
   target_compile_options( libbitcoin-database-tools
     PRIVATE
