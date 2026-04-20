@@ -68,10 +68,11 @@ code CLASS::get_unconfirmed_history(const stopper& cancel, histories& out,
             }
 
             uint64_t fee{};
-            auto height = history::unrooted_height;
             if (!get_tx_fee(fee, link))
                 fee = history::missing_prevout;
-            else if (is_confirmed_all_prevouts(link))
+
+            auto height = history::unrooted_height;
+            if (is_confirmed_all_prevouts(link))
                 height = history::rooted_height;
 
             return history{ { std::move(hash), height }, fee,
@@ -115,9 +116,10 @@ code CLASS::get_confirmed_history(const stopper& cancel, histories& out,
                 return history{};
             }
 
-            uint64_t fee{};
-            if (!get_tx_fee(fee, link))
-                fee = history::missing_prevout;
+            // Electrum uses fees only on unconfirmed (and expensive).
+            constexpr auto fee = history::missing_prevout;
+            ////if (!get_tx_fee(fee, link))
+            ////    fee = history::missing_prevout;
 
             return history{ { std::move(hash), height }, fee, position };
         });
@@ -176,10 +178,8 @@ history CLASS::get_tx_history(hash_digest&& key,
     if (link.is_terminal())
         return {};
 
-    uint64_t fee{};
-    if (!get_tx_fee(fee, link))
-        fee = history::missing_prevout;
-
+    // Electrum uses fees only on unconfirmed (and expensive).
+    auto fee = history::missing_prevout;
     auto height = history::unrooted_height;
     auto position = history::unconfirmed_position;
     if (const auto block = find_confirmed_block(link); !block.is_terminal())
@@ -190,6 +190,9 @@ history CLASS::get_tx_history(hash_digest&& key,
     }
     else
     {
+        if (!get_tx_fee(fee, link))
+            fee = history::missing_prevout;
+
         if (is_confirmed_all_prevouts(link))
             height = history::rooted_height;
     }
@@ -197,6 +200,7 @@ history CLASS::get_tx_history(hash_digest&& key,
     return { { std::move(key), height }, fee, position };
 }
 
+// server/electrum
 TEMPLATE
 histories CLASS::get_spenders_history(
     const system::chain::point& prevout) const NOEXCEPT
