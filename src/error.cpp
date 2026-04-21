@@ -29,6 +29,7 @@ DEFINE_ERROR_T_MESSAGE_MAP(error)
     // general
     { success, "success" },
     { canceled, "canceled" },
+    { limited, "limited" },
     { unknown_state, "unknown state" },
 
     // integrity (internal fault)
