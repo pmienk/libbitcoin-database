@@ -89,7 +89,6 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__turbo_block1a_addre
     BOOST_REQUIRE(!store.create(test::events_handler));
     BOOST_REQUIRE(test::setup_three_block_confirmed_address_store(query));
 
-    using namespace system;
     histories out{};
     const std::atomic_bool cancel{};
     BOOST_REQUIRE(!query.get_unconfirmed_history(cancel, out, test::block1a_address0, true));
@@ -116,6 +115,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__turbo_block1a_addre
     BOOST_CHECK_EQUAL(out.at(3).position, history::unconfirmed_position);
 
     // Unconfirmed system::encode_hash(hash) lexically sorted.
+    using namespace system;
     BOOST_CHECK(encode_hash(out.at(0).tx.hash()) < encode_hash(out.at(1).tx.hash()));
     BOOST_CHECK(encode_hash(out.at(2).tx.hash()) < encode_hash(out.at(3).tx.hash()));
 
@@ -178,7 +178,6 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__turbo_block1a_address0__expecte
     BOOST_REQUIRE(!store.create(test::events_handler));
     BOOST_REQUIRE(test::setup_three_block_confirmed_address_store(query));
 
-    using namespace system;
     histories out{};
     const std::atomic_bool cancel{};
     BOOST_REQUIRE(!query.get_history(cancel, out, test::block1a_address0, true));
@@ -219,6 +218,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__turbo_block1a_address0__expecte
     BOOST_REQUIRE_EQUAL(out.at(7).position, history::unconfirmed_position);     // tx7
 
     // Unconfirmed system::encode_hash(hash) lexically sorted.
+    using namespace system;
     BOOST_REQUIRE(encode_hash(out.at(6).tx.hash()) < encode_hash(out.at(7).tx.hash()));
 
     // Fee (not part of sort).
@@ -230,6 +230,42 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__turbo_block1a_address0__expecte
     BOOST_REQUIRE_EQUAL(out.at(5).fee, floored_subtract(0x18u + 0x2au, 0x08u)); // tx4/tx8
     BOOST_REQUIRE_EQUAL(out.at(6).fee, floored_subtract(0xb1u + 0xb1u, 0xb2u)); // tx8/tx5
     BOOST_REQUIRE_EQUAL(out.at(7).fee, history::missing_prevout);               // tx7
+}
+
+BOOST_AUTO_TEST_CASE(query_address__get_history__limited__limited_empty)
+{
+    settings settings{};
+    settings.path = TEST_DIRECTORY;
+    test::chunk_store store{ settings };
+    test::query_accessor query{ store };
+    BOOST_REQUIRE(!store.create(test::events_handler));
+    BOOST_REQUIRE(test::setup_three_block_confirmed_address_store(query));
+
+    histories out{};
+    address_link cursor{};
+    const std::atomic_bool cancel{};
+    BOOST_REQUIRE_EQUAL(query.get_history(cancel, cursor, out, test::block1a_address0, 0, true), error::limited);
+    BOOST_REQUIRE(out.empty());
+
+    cursor = address_link::terminal;
+    BOOST_REQUIRE_EQUAL(query.get_history(cancel, cursor, out, test::block1a_address0, 1, true), error::limited);
+    BOOST_REQUIRE(out.empty());
+
+    cursor = address_link::terminal;
+    BOOST_REQUIRE_EQUAL(query.get_history(cancel, cursor, out, test::block1a_address0, 7, true), error::limited);
+    BOOST_REQUIRE(out.empty());
+
+    cursor = address_link::terminal;
+    BOOST_REQUIRE_EQUAL(query.get_history(cancel, cursor, out, test::block1a_address0, 8, true), error::limited);
+    BOOST_REQUIRE(out.empty());
+
+    cursor = address_link::terminal;
+    BOOST_REQUIRE_EQUAL(query.get_history(cancel, cursor, out, test::block1a_address0, 9, true), error::success);
+    BOOST_REQUIRE_EQUAL(out.size(), 8u);
+
+    cursor = address_link::terminal;
+    BOOST_REQUIRE_EQUAL(query.get_history(cancel, cursor, out, test::block1a_address0, 100, true), error::success);
+    BOOST_REQUIRE_EQUAL(out.size(), 8u);
 }
 
 // get_tx_history1

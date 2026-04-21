@@ -641,6 +641,9 @@ public:
         const hash_digest& key, bool turbo=false) const NOEXCEPT;
     code get_history(const stopper& cancel, histories& out,
         const hash_digest& key, bool turbo=false) const NOEXCEPT;
+    code get_history(const stopper& cancel, address_link& cursor,
+        histories& out, const hash_digest& key, size_t limit=max_size_t,
+        bool turbo=false) const NOEXCEPT;
 
     /// Electrum queries (unspents, deduped, electrum sort).
     code get_unconfirmed_unspent(const stopper& cancel, unspents& out,
