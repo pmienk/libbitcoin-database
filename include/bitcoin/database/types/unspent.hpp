@@ -30,15 +30,28 @@ struct BCD_API unspent
     static constexpr size_t unused_height = zero;
     static constexpr size_t unconfirmed_position = max_size_t;
 
+    /// Filter out invalid unspent output elements and sort.
     static void filter_sort_and_dedup(std::vector<unspent>& unspent) NOEXCEPT;
 
+    /// The outpoint is valid (not defaulted).
     bool valid() const NOEXCEPT;
+
+    /// The tx is confirmed in a block.
     bool confirmed() const NOEXCEPT;
+
+    /// Comparison operator based on Electrum unspent status sort.
     bool operator<(const unspent& other) const NOEXCEPT;
+
+    /// Equivalence: !LT && !GT (note that fee is never considered).
     bool operator==(const unspent& other) const NOEXCEPT;
 
+    /// Tx hash and index of output within the tx.
     outpoint out{};
+
+    /// Tx's block height if confirmed, or unspent::unused_height.
     size_t height{};
+
+    /// Tx's position in confirmed block, or unspent::unconfirmed_position.
     size_t position{};
 };
 
