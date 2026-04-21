@@ -125,13 +125,23 @@ code CLASS::get_confirmed_history(const stopper& cancel, histories& out,
         });
 }
 
-// server/electrum
+// ununsed
 TEMPLATE
 code CLASS::get_history(const stopper& cancel, histories& out,
     const hash_digest& key, bool turbo) const NOEXCEPT
 {
+    address_link cursor{};
+    return get_history(cancel, cursor, out, key, max_size_t, turbo);
+}
+
+// server/electrum
+TEMPLATE
+code CLASS::get_history(const stopper& cancel, address_link& cursor,
+    histories& out, const hash_digest& key, size_t limit,
+    bool turbo) const NOEXCEPT
+{
     output_links outs{};
-    if (const auto ec = to_address_outputs(cancel, outs, key))
+    if (const auto ec = to_address_outputs(cancel, cursor, outs, key, limit))
         return ec;
 
     tx_links links{};

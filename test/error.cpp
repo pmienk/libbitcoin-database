@@ -41,6 +41,15 @@ BOOST_AUTO_TEST_CASE(error_t__code__canceled__true_expected_message)
     BOOST_REQUIRE_EQUAL(ec.message(), "canceled");
 }
 
+BOOST_AUTO_TEST_CASE(error_t__code__limited__true_expected_message)
+{
+    constexpr auto value = error::limited;
+    const auto ec = code(value);
+    BOOST_REQUIRE(ec);
+    BOOST_REQUIRE(ec == value);
+    BOOST_REQUIRE_EQUAL(ec.message(), "limited");
+}
+
 BOOST_AUTO_TEST_CASE(error_t__code__unknown_state__true_expected_message)
 {
     constexpr auto value = error::unknown_state;
