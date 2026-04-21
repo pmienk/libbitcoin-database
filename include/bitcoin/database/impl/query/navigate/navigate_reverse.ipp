@@ -105,7 +105,7 @@ code CLASS::to_address_outputs(const stopper& cancel, output_links& out,
 
 TEMPLATE
 code CLASS::to_address_outputs(const stopper& cancel, address_link& cursor,
-    output_links& out, const hash_digest& key) const NOEXCEPT
+    output_links& out, const hash_digest& key, size_t limit) const NOEXCEPT
 {
     out.clear();
     const auto end = cursor;
@@ -117,6 +117,9 @@ code CLASS::to_address_outputs(const stopper& cancel, address_link& cursor,
 
         if (it.get() == end)
             return error::success;
+
+        if (is_zero(limit--))
+            return error::limited;
 
         table::address::record address{};
         if (!store_.address.get(it, address))

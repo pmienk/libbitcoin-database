@@ -177,6 +177,31 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__terminal__not_reduced)
     BOOST_REQUIRE_EQUAL(out.at(5), 81u);
 }
 
+BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__limit__limited)
+{
+    settings settings{};
+    settings.path = TEST_DIRECTORY;
+    test::chunk_store store{ settings };
+    test::query_accessor query{ store };
+    BOOST_REQUIRE(!store.create(test::events_handler));
+    BOOST_REQUIRE(setup_three_block_unconfirmed_address_store(query));
+
+    output_links out{};
+    address_link end{};
+    const std::atomic_bool cancel{};
+    BOOST_REQUIRE_EQUAL(query.to_address_outputs(cancel, end, out, test::block1a_address0, 4), error::limited);
+
+    // The limit is applied before deduplication.
+    // There are 6 instances of the `script{ { { opcode::pick } } }` output, limited to 4.
+    BOOST_REQUIRE_EQUAL(out.size(), 4u);
+    BOOST_REQUIRE_EQUAL(out.at(0), 123u);
+    BOOST_REQUIRE_EQUAL(out.at(1), 116u);
+    BOOST_REQUIRE_EQUAL(out.at(2), 109u);
+    BOOST_REQUIRE_EQUAL(out.at(3), 102u);
+    ////BOOST_REQUIRE_EQUAL(out.at(4), 95u);
+    ////BOOST_REQUIRE_EQUAL(out.at(5), 81u);
+}
+
 BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__stop_mismatch__populated_not_found)
 {
     settings settings{};
