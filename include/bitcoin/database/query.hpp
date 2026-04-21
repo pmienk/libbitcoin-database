@@ -630,6 +630,8 @@ public:
         const hash_digest& key, uint64_t value, bool turbo=false) const NOEXCEPT;
     code get_address_outpoints(const stopper& cancel, outpoints& out,
         const hash_digest& key, bool turbo=false) const NOEXCEPT;
+    code get_address_outpoints(const stopper& cancel, address_link& cursor,
+        outpoints& out, const hash_digest& key, bool turbo=false) const NOEXCEPT;
 
     /// Electrum queries (histories, deduped, electrum sort).
     code get_unconfirmed_history(const stopper& cancel, histories& out,
@@ -657,6 +659,7 @@ public:
         bool turbo=false) const NOEXCEPT;
 
     /// History queries.
+    // TODO: add point_link cursor to new get_spenders(cursor, point) query.
     history get_tx_history(const tx_link& link) const NOEXCEPT;
     history get_tx_history(const hash_digest& key) const NOEXCEPT;
     histories get_spenders_history(const point& prevout) const NOEXCEPT;

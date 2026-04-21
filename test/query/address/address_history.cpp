@@ -42,14 +42,14 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__genesis__expected)
 
     out.clear();
     BOOST_REQUIRE(!query.get_confirmed_history(cancel, out, test::genesis_address0));
-    BOOST_REQUIRE_EQUAL(out.at(0).fee, 0u);
+    BOOST_REQUIRE_EQUAL(out.at(0).fee, history::missing_prevout);
     BOOST_REQUIRE_EQUAL(out.at(0).position, 0u);
     BOOST_REQUIRE_EQUAL(out.at(0).tx.height(), 0u);
     BOOST_REQUIRE_EQUAL(out.at(0).tx.hash(), test::genesis.transactions_ptr()->at(0)->hash(false));
 
     out.clear();
     BOOST_REQUIRE(!query.get_history(cancel, out, test::genesis_address0));
-    BOOST_REQUIRE_EQUAL(out.at(0).fee, 0u);
+    BOOST_REQUIRE_EQUAL(out.at(0).fee, history::missing_prevout);
     BOOST_REQUIRE_EQUAL(out.at(0).position, 0u);
     BOOST_REQUIRE_EQUAL(out.at(0).tx.height(), 0u);
     BOOST_REQUIRE_EQUAL(out.at(0).tx.hash(), test::genesis.transactions_ptr()->at(0)->hash(false));
@@ -96,34 +96,34 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__turbo_block1a_addre
     BOOST_REQUIRE_EQUAL(out.size(), 4u);
 
     // Identities (not part of sort).
-    BOOST_REQUIRE_EQUAL(out.at(0).tx.hash(), test::tx4.hash(false));                                // tx4
-    BOOST_REQUIRE_EQUAL(out.at(1).tx.hash(), test::block2b.transactions_ptr()->at(0)->hash(false)); // tx8
-    BOOST_REQUIRE_EQUAL(out.at(2).tx.hash(), test::tx5.hash(false));                                // tx5
-    BOOST_REQUIRE_EQUAL(out.at(3).tx.hash(), test::block1b.transactions_ptr()->at(0)->hash(false)); // tx7
+    BOOST_CHECK_EQUAL(out.at(0).tx.hash(), test::tx5.hash(false));                                // tx5
+    BOOST_CHECK_EQUAL(out.at(1).tx.hash(), test::tx4.hash(false));                                // tx4
+    BOOST_CHECK_EQUAL(out.at(2).tx.hash(), test::block2b.transactions_ptr()->at(0)->hash(false)); // tx8
+    BOOST_CHECK_EQUAL(out.at(3).tx.hash(), test::block1b.transactions_ptr()->at(0)->hash(false)); // tx7
 
     // Confirmed by height ascending (not part of sort).
 
     // Unconfirmed rooted before unrooted.
-    BOOST_REQUIRE_EQUAL(out.at(0).tx.height(), history::rooted_height);     // spends block1a (tx0 both outputs).
-    BOOST_REQUIRE_EQUAL(out.at(1).tx.height(), history::unrooted_height);   // bk2btx0 unrooted (spends bk1).
-    BOOST_REQUIRE_EQUAL(out.at(2).tx.height(), history::unrooted_height);   // spend exceeds value (treated as missing prevout).
-    BOOST_REQUIRE_EQUAL(out.at(3).tx.height(), history::unrooted_height);   // bk1btx0 unrooted (missing prevouts).
+    BOOST_CHECK_EQUAL(out.at(0).tx.height(), history::rooted_height);   // tx5 spends block1a
+    BOOST_CHECK_EQUAL(out.at(1).tx.height(), history::rooted_height);   // tx4 spends block1a
+    BOOST_CHECK_EQUAL(out.at(2).tx.height(), history::unrooted_height); // block2b spends block1b
+    BOOST_CHECK_EQUAL(out.at(3).tx.height(), history::unrooted_height); // block1b missing prevouts
 
     // Confirmed height by block position (not part of sort).
-    BOOST_REQUIRE_EQUAL(out.at(0).position, history::unconfirmed_position);
-    BOOST_REQUIRE_EQUAL(out.at(1).position, history::unconfirmed_position);
-    BOOST_REQUIRE_EQUAL(out.at(2).position, history::unconfirmed_position);
-    BOOST_REQUIRE_EQUAL(out.at(3).position, history::unconfirmed_position);
+    BOOST_CHECK_EQUAL(out.at(0).position, history::unconfirmed_position);
+    BOOST_CHECK_EQUAL(out.at(1).position, history::unconfirmed_position);
+    BOOST_CHECK_EQUAL(out.at(2).position, history::unconfirmed_position);
+    BOOST_CHECK_EQUAL(out.at(3).position, history::unconfirmed_position);
 
     // Unconfirmed system::encode_hash(hash) lexically sorted.
-    BOOST_REQUIRE(encode_hash(out.at(1).tx.hash()) < encode_hash(out.at(2).tx.hash()));
-    BOOST_REQUIRE(encode_hash(out.at(2).tx.hash()) < encode_hash(out.at(3).tx.hash()));
+    BOOST_CHECK(encode_hash(out.at(0).tx.hash()) < encode_hash(out.at(1).tx.hash()));
+    BOOST_CHECK(encode_hash(out.at(2).tx.hash()) < encode_hash(out.at(3).tx.hash()));
 
     // Fee (not part of sort).
-    BOOST_REQUIRE_EQUAL(out.at(0).fee, floored_subtract(0x18u + 0x2au, 0x08u));
-    BOOST_REQUIRE_EQUAL(out.at(1).fee, floored_subtract(0xb1u + 0xb1u, 0xb2u));
-    BOOST_REQUIRE_EQUAL(out.at(2).fee, history::missing_prevout);           // spend exceeds value (treated as missing prevout).
-    BOOST_REQUIRE_EQUAL(out.at(3).fee, 0u);                                 // coinbase (archived with null single point).
+    BOOST_CHECK_EQUAL(out.at(0).fee, history::missing_prevout);         // spend exceeds value (treated as missing prevout).
+    BOOST_CHECK_EQUAL(out.at(1).fee, floored_subtract(0x18u + 0x2au, 0x08u));
+    BOOST_CHECK_EQUAL(out.at(2).fee, floored_subtract(0xb1u + 0xb1u, 0xb2u));
+    BOOST_CHECK_EQUAL(out.at(3).fee, 0u);                               // coinbase (archived with null single point).
 }
 
 BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__turbo_block1a_address0__expected)
@@ -229,7 +229,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__turbo_block1a_address0__expecte
     BOOST_REQUIRE_EQUAL(out.at(4).fee, history::missing_prevout);               // tx5/tx4
     BOOST_REQUIRE_EQUAL(out.at(5).fee, floored_subtract(0x18u + 0x2au, 0x08u)); // tx4/tx8
     BOOST_REQUIRE_EQUAL(out.at(6).fee, floored_subtract(0xb1u + 0xb1u, 0xb2u)); // tx8/tx5
-    BOOST_REQUIRE_EQUAL(out.at(7).fee, 0u);                                     // tx7
+    BOOST_REQUIRE_EQUAL(out.at(7).fee, history::missing_prevout);               // tx7
 }
 
 // get_tx_history1
@@ -260,14 +260,14 @@ BOOST_AUTO_TEST_CASE(query_address__get_tx_history__genesis__expected)
     const auto hash = test::genesis.transactions_ptr()->at(0)->hash(false);
     auto history = query.get_tx_history(0);
     BOOST_REQUIRE(history.valid());
-    BOOST_REQUIRE_EQUAL(history.fee, 0u);
+    BOOST_REQUIRE_EQUAL(history.fee, history::missing_prevout);
     BOOST_REQUIRE_EQUAL(history.position, 0u);
     BOOST_REQUIRE_EQUAL(history.tx.height(), 0u);
     BOOST_REQUIRE_EQUAL(history.tx.hash(), hash);
 
     history = query.get_tx_history(hash);
     BOOST_REQUIRE(history.valid());
-    BOOST_REQUIRE_EQUAL(history.fee, 0u);
+    BOOST_REQUIRE_EQUAL(history.fee, history::missing_prevout);
     BOOST_REQUIRE_EQUAL(history.position, 0u);
     BOOST_REQUIRE_EQUAL(history.tx.height(), 0u);
     BOOST_REQUIRE_EQUAL(history.tx.hash(), hash);
