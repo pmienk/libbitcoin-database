@@ -27,21 +27,37 @@ namespace database {
 
 struct BCD_API history
 {
+    /// unrooted_height maps to -1 in the Electrum json-rpc.
     static constexpr size_t rooted_height = zero;
     static constexpr size_t unrooted_height = max_size_t;
     static constexpr size_t unconfirmed_position = max_size_t;
     static constexpr uint64_t missing_prevout = max_uint64;
 
+    /// Filter out invalid history elements (txs) and sort.
     static void filter_sort_and_dedup(std::vector<history>& history) NOEXCEPT;
 
+    /// The tx is valid (not defaulted).
     bool valid() const NOEXCEPT;
+
+    /// The unconfirmed tx is rooted in chain (all prevouts confirmed).
     bool rooted() const NOEXCEPT;
+
+    /// The tx is confirmed in a block.
     bool confirmed() const NOEXCEPT;
+
+    /// Comparison operator based on Electrum history status sort.
     bool operator<(const history& other) const NOEXCEPT;
+
+    /// Equivalence: !LT && !GT (note that fee is never considered).
     bool operator==(const history& other) const NOEXCEPT;
 
+    /// Tx hash and block height, or rooted/unrooted_height if unconfirmed.
     checkpoint tx{};
+
+    /// Tx fee, or history::missing_prevout for missing, confirmed, or -fee.
     uint64_t fee{};
+
+    /// Tx's position in confirmed block, or history::unconfirmed_position.
     size_t position{};
 };
 
