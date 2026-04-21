@@ -40,12 +40,18 @@ TEMPLATE
 code CLASS::get_unconfirmed_history(const stopper& cancel, histories& out,
     const hash_digest& key, bool turbo) const NOEXCEPT
 {
-    output_links outs{};
-    if (const auto ec = to_address_outputs(cancel, outs, key))
-        return ec;
+    address_link cursor{};
+    return get_unconfirmed_history(cancel, cursor, out, key, max_size_t, turbo);
+}
 
+// server/electrum
+TEMPLATE
+code CLASS::get_unconfirmed_history(const stopper& cancel,
+    address_link& cursor, histories& out, const hash_digest& key,
+    size_t limit, bool turbo) const NOEXCEPT
+{
     tx_links txs{};
-    if (const auto ec = to_touched_txs(cancel, txs, outs))
+    if (const auto ec = get_address_txs(cancel, cursor, txs, key, limit))
         return ec;
 
     out.clear();
@@ -53,30 +59,10 @@ code CLASS::get_unconfirmed_history(const stopper& cancel, histories& out,
     return parallel_history_transform(cancel, turbo, out, txs,
         [this](const tx_link& link, auto& cancel, auto& fail) NOEXCEPT
         {
-            if (cancel || fail)
-                return history{};
-
-            // chain::checkpoint invalid in default construction (filter).
-            if (is_confirmed_block(find_strong(link)))
-                return history{};
-
-            auto hash = get_tx_key(link);
-            if (hash == system::null_hash)
-            {
-                fail = true;
-                return history{};
-            }
-
-            uint64_t fee{};
-            if (!get_tx_fee(fee, link))
-                fee = history::missing_prevout;
-
-            auto height = history::unrooted_height;
-            if (is_confirmed_all_prevouts(link))
-                height = history::rooted_height;
-
-            return history{ { std::move(hash), height }, fee,
-                history::unconfirmed_position };
+            if (cancel || fail) return history{};
+            const auto out = get_tx_unconfirmed_history(link);
+            if (!out.confirmed() && !out.valid()) fail = true;
+            return out;
         });
 }
 
@@ -85,12 +71,18 @@ TEMPLATE
 code CLASS::get_confirmed_history(const stopper& cancel, histories& out,
     const hash_digest& key, bool turbo) const NOEXCEPT
 {
-    output_links outs{};
-    if (const auto ec = to_address_outputs(cancel, outs, key))
-        return ec;
+    address_link cursor{};
+    return get_confirmed_history(cancel, cursor, out, key, max_size_t, turbo);
+}
 
+// ununsed
+TEMPLATE
+code CLASS::get_confirmed_history(const stopper& cancel,
+    address_link& cursor, histories& out, const hash_digest& key,
+    size_t limit, bool turbo) const NOEXCEPT
+{
     tx_links txs{};
-    if (const auto ec = to_touched_txs(cancel, txs, outs))
+    if (const auto ec = get_address_txs(cancel, cursor, txs, key, limit))
         return ec;
 
     out.clear();
@@ -98,30 +90,10 @@ code CLASS::get_confirmed_history(const stopper& cancel, histories& out,
     return parallel_history_transform(cancel, turbo, out, txs,
         [this](const tx_link& link, auto& cancel, auto& fail) NOEXCEPT
         {
-            if (cancel || fail)
-                return history{};
-
-            // chain::checkpoint invalid in default construction (filter).
-            const auto block = find_strong(link);
-            if (!is_confirmed_block(block))
-                return history{};
-
-            size_t height{}, position{};
-            auto hash = get_tx_key(link);
-            if (hash == system::null_hash ||
-                !get_height(height, block) ||
-                !get_tx_position(position, link, block))
-            {
-                fail = true;
-                return history{};
-            }
-
-            // Electrum uses fees only on unconfirmed (and expensive).
-            constexpr auto fee = history::missing_prevout;
-            ////if (!get_tx_fee(fee, link))
-            ////    fee = history::missing_prevout;
-
-            return history{ { std::move(hash), height }, fee, position };
+            if (cancel || fail) return history{};
+            const auto out = get_tx_confirmed_history(link);
+            if (out.confirmed() && !out.valid()) fail = true;
+            return out;
         });
 }
 
@@ -140,26 +112,18 @@ code CLASS::get_history(const stopper& cancel, address_link& cursor,
     histories& out, const hash_digest& key, size_t limit,
     bool turbo) const NOEXCEPT
 {
-    output_links outs{};
-    if (const auto ec = to_address_outputs(cancel, cursor, outs, key, limit))
-        return ec;
-
-    tx_links links{};
-    if (const auto ec = to_touched_txs(cancel, links, outs))
+    tx_links txs{};
+    if (const auto ec = get_address_txs(cancel, cursor, txs, key, limit))
         return ec;
 
     out.clear();
-    out.resize(links.size());
-    return parallel_history_transform(cancel, turbo, out, links,
+    out.resize(txs.size());
+    return parallel_history_transform(cancel, turbo, out, txs,
         [this](const tx_link& link, auto& cancel, auto& fail) NOEXCEPT
         {
-            if (cancel || fail)
-                return history{};
-
+            if (cancel || fail) return history{};
             const auto out = get_tx_history(link);
-            if (!out.valid())
-                fail = true;
-
+            if (!out.valid()) fail = true;
             return out;
         });
 }
@@ -173,26 +137,22 @@ history CLASS::get_tx_history(const tx_link& link) const NOEXCEPT
     return get_tx_history(get_tx_key(link), link);
 }
 
-TEMPLATE
-history CLASS::get_tx_history(const hash_digest& key) const NOEXCEPT
-{
-    const auto link = to_tx(key);
-    return get_tx_history(hash_digest{ key }, link);
-}
-
-// private
+// protected
 TEMPLATE
 history CLASS::get_tx_history(hash_digest&& key,
     const tx_link& link) const NOEXCEPT
 {
+    // history is invalid in default construction.
     if (link.is_terminal())
         return {};
 
-    // Electrum uses fees only on unconfirmed (and expensive).
+    // Electrum uses fees only on unconfirmed.
     auto fee = history::missing_prevout;
     auto height = history::unrooted_height;
     auto position = history::unconfirmed_position;
-    if (const auto block = find_confirmed_block(link); !block.is_terminal())
+
+    const auto block = find_strong(link);
+    if (is_confirmed_block(block))
     {
         if (!get_height(height, block) ||
             !get_tx_position(position, link, block))
@@ -208,6 +168,65 @@ history CLASS::get_tx_history(hash_digest&& key,
     }
 
     return { { std::move(key), height }, fee, position };
+}
+
+TEMPLATE
+history CLASS::get_tx_confirmed_history(const tx_link& link) const NOEXCEPT
+{
+    return get_tx_confirmed_history(get_tx_key(link), link);
+}
+
+// protected
+TEMPLATE
+history CLASS::get_tx_confirmed_history(hash_digest&& key,
+    const tx_link& link) const NOEXCEPT
+{
+    // history is invalid in default construction.
+    if (link.is_terminal())
+        return { .position = zero };
+
+    const auto block = find_strong(link);
+
+    // Returns invalid (filtered) but also !confirmed().
+    if (!is_confirmed_block(block))
+        return { .position = history::unconfirmed_position };
+
+    size_t height{}, position{};
+    if (!get_height(height, block) ||
+        !get_tx_position(position, link, block))
+        return { .position = zero };
+
+    // Electrum uses fees only on unconfirmed (expensive).
+    return { { std::move(key), height }, history::missing_prevout, position };
+}
+
+TEMPLATE
+history CLASS::get_tx_unconfirmed_history(const tx_link& link) const NOEXCEPT
+{
+    return get_tx_unconfirmed_history(get_tx_key(link), link);
+}
+
+// protected
+TEMPLATE
+history CLASS::get_tx_unconfirmed_history(hash_digest&& key,
+    const tx_link& link) const NOEXCEPT
+{
+    // history is invalid in default construction.
+    if (link.is_terminal())
+        return { .position = history::unconfirmed_position };
+
+    // Returns invalid (filtered) but also confirmed().
+    if (is_confirmed_block(find_strong(link)))
+        return { .position = zero };
+
+    uint64_t fee{};
+    if (!get_tx_fee(fee, link))
+        fee = history::missing_prevout;
+
+    const auto height = is_confirmed_all_prevouts(link) ?
+        history::rooted_height : history::unrooted_height;
+
+    return { { std::move(key), height }, fee, history::unconfirmed_position };
 }
 
 // server/electrum
@@ -233,8 +252,19 @@ histories CLASS::get_spenders_history(const hash_digest& key,
 
 // utilities
 // ----------------------------------------------------------------------------
-// private/static
 
+TEMPLATE
+code CLASS::get_address_txs(const stopper& cancel, address_link& cursor,
+    tx_links& out, const hash_digest& key, size_t limit) const NOEXCEPT
+{
+    output_links links{};
+    if (const auto ec = to_address_outputs(cancel, cursor, links, key, limit))
+        return ec;
+
+    return to_touched_txs(cancel, out, links);
+}
+
+// private/static
 TEMPLATE
 template <typename Functor>
 code CLASS::parallel_history_transform(const stopper& cancel, bool turbo,

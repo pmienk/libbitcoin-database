@@ -641,6 +641,14 @@ public:
         const hash_digest& key, bool turbo=false) const NOEXCEPT;
     code get_history(const stopper& cancel, histories& out,
         const hash_digest& key, bool turbo=false) const NOEXCEPT;
+
+    /// Electrum queries (with limit and cursor options).
+    code get_unconfirmed_history(const stopper& cancel, address_link& cursor,
+        histories& out, const hash_digest& key, size_t limit=max_size_t,
+        bool turbo=false) const NOEXCEPT;
+    code get_confirmed_history(const stopper& cancel, address_link& cursor,
+        histories& out, const hash_digest& key,size_t limit=max_size_t,
+        bool turbo=false) const NOEXCEPT;
     code get_history(const stopper& cancel, address_link& cursor,
         histories& out, const hash_digest& key, size_t limit=max_size_t,
         bool turbo=false) const NOEXCEPT;
@@ -663,9 +671,9 @@ public:
         bool turbo=false) const NOEXCEPT;
 
     /// History queries.
-    // TODO: add point_link cursor to new get_spenders(cursor, point) query.
     history get_tx_history(const tx_link& link) const NOEXCEPT;
-    history get_tx_history(const hash_digest& key) const NOEXCEPT;
+    history get_tx_confirmed_history(const tx_link& link) const NOEXCEPT;
+    history get_tx_unconfirmed_history(const tx_link& link) const NOEXCEPT;
     histories get_spenders_history(const point& prevout) const NOEXCEPT;
     histories get_spenders_history(const hash_digest& key,
         uint32_t index) const NOEXCEPT;
@@ -835,6 +843,13 @@ protected:
 
     history get_tx_history(hash_digest&& key,
         const tx_link& link) const NOEXCEPT;
+    history get_tx_confirmed_history(hash_digest&& key,
+        const tx_link& link) const NOEXCEPT;
+    history get_tx_unconfirmed_history(hash_digest&& key,
+        const tx_link& link) const NOEXCEPT;
+
+    code get_address_txs(const stopper& cancel, address_link& cursor,
+        tx_links& out, const hash_digest& key, size_t limit) const NOEXCEPT;
 
 private:
     // This value should never be read, but may be useful in debugging.
