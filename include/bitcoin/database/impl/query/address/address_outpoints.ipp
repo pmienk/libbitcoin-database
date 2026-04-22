@@ -166,7 +166,7 @@ code CLASS::parallel_outpoint_transform(const stopper& cancel, bool turbo,
         return error::integrity;
 
     if (cancel)
-        return error::canceled;
+        return error::query_canceled;
 
     // Remove default/null points.
     out.erase(std::remove_if(out.begin(), out.end(),

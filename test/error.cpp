@@ -32,24 +32,6 @@ BOOST_AUTO_TEST_CASE(error_t__code__success__false_expected_message)
     BOOST_REQUIRE_EQUAL(ec.message(), "success");
 }
 
-BOOST_AUTO_TEST_CASE(error_t__code__canceled__true_expected_message)
-{
-    constexpr auto value = error::canceled;
-    const auto ec = code(value);
-    BOOST_REQUIRE(ec);
-    BOOST_REQUIRE(ec == value);
-    BOOST_REQUIRE_EQUAL(ec.message(), "canceled");
-}
-
-BOOST_AUTO_TEST_CASE(error_t__code__limited__true_expected_message)
-{
-    constexpr auto value = error::limited;
-    const auto ec = code(value);
-    BOOST_REQUIRE(ec);
-    BOOST_REQUIRE(ec == value);
-    BOOST_REQUIRE_EQUAL(ec.message(), "limited");
-}
-
 BOOST_AUTO_TEST_CASE(error_t__code__unknown_state__true_expected_message)
 {
     constexpr auto value = error::unknown_state;
@@ -726,6 +708,24 @@ BOOST_AUTO_TEST_CASE(error_t__code__empty_block__true_expected_message)
     BOOST_REQUIRE(ec);
     BOOST_REQUIRE(ec == value);
     BOOST_REQUIRE_EQUAL(ec.message(), "empty_block");
+}
+
+BOOST_AUTO_TEST_CASE(error_t__code__depth_limited__true_expected_message)
+{
+    constexpr auto value = error::depth_limited;
+    const auto ec = code(value);
+    BOOST_REQUIRE(ec);
+    BOOST_REQUIRE(ec == value);
+    BOOST_REQUIRE_EQUAL(ec.message(), "depth_limited");
+}
+
+BOOST_AUTO_TEST_CASE(error_t__code__invalid_cursor__true_expected_message)
+{
+    constexpr auto value = error::invalid_cursor;
+    const auto ec = code(value);
+    BOOST_REQUIRE(ec);
+    BOOST_REQUIRE(ec == value);
+    BOOST_REQUIRE_EQUAL(ec.message(), "invalid_cursor");
 }
 
 BOOST_AUTO_TEST_CASE(error_t__code__query_canceled__true_expected_message)

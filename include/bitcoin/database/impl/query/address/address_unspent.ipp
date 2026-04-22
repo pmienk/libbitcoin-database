@@ -203,7 +203,7 @@ code CLASS::parallel_unspent_transform(const stopper& cancel, bool turbo,
         return error::integrity;
 
     if (cancel)
-        return error::canceled;
+        return error::query_canceled;
 
     unspent::filter_sort_and_dedup(out);
     return error::success;
