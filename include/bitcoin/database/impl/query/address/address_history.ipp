@@ -285,7 +285,7 @@ code CLASS::parallel_history_transform(const stopper& cancel, bool turbo,
         return error::integrity;
 
     if (cancel)
-        return error::canceled;
+        return error::query_canceled;
 
     history::filter_sort_and_dedup(out);
     return error::success;

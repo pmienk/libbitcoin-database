@@ -28,8 +28,6 @@ DEFINE_ERROR_T_MESSAGE_MAP(error)
 {
     // general
     { success, "success" },
-    { canceled, "canceled" },
-    { limited, "limited" },
     { unknown_state, "unknown state" },
 
     // integrity (internal fault)
@@ -128,6 +126,8 @@ DEFINE_ERROR_T_MESSAGE_MAP(error)
     // services
     { not_found, "not_found" },
     { empty_block, "empty_block" },
+    { depth_limited, "depth_limited" },
+    { invalid_cursor, "invalid_cursor" },
     { query_canceled, "query_canceled" },
     { invalid_argument, "invalid_argument" },
     { missing_prevouts, "missing_prevouts" },

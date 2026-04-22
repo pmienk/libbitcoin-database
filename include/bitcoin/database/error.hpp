@@ -34,8 +34,6 @@ enum error_t : uint8_t
 {
     /// general
     success,
-    canceled,
-    limited,
     unknown_state,
 
     /// integrity (internal fault)
@@ -136,6 +134,8 @@ enum error_t : uint8_t
     /// services
     not_found,
     empty_block,
+    depth_limited,
+    invalid_cursor,
     query_canceled,
     invalid_argument,
     missing_prevouts,

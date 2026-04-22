@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__turbo_block1a_address0__expecte
     BOOST_CHECK_EQUAL(out.at(7).fee, history::missing_prevout);               // tx7
 }
 
-BOOST_AUTO_TEST_CASE(query_address__get_history__limited__limited_empty)
+BOOST_AUTO_TEST_CASE(query_address__get_history__limited__depth_limited_empty)
 {
     settings settings{};
     settings.path = TEST_DIRECTORY;
@@ -132,11 +132,11 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__limited__limited_empty)
     const auto& hash = test::block1a_address0;
 
     // Limited returned when limit precludes reaching the address cursor (or terminal).
-    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 0, true), error::limited);
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     cursor = address_link::terminal;
-    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 8, true), error::limited);
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     cursor = address_link::terminal;
@@ -223,7 +223,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__turbo_block1a_addre
     BOOST_CHECK_EQUAL(out.at(3).fee, 0u);                               // coinbase (archived with null single point).
 }
 
-BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__limited__limited_empty)
+BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__limited__depth_limited_empty)
 {
     settings settings{};
     settings.path = TEST_DIRECTORY;
@@ -238,11 +238,11 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__limited__limited_em
     const auto& hash = test::block1a_address0;
 
     // Limited returned when limit precludes reaching the address cursor (or terminal).
-    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 0, true), error::limited);
+    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     cursor = address_link::terminal;
-    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 8, true), error::limited);
+    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     cursor = address_link::terminal;
@@ -295,7 +295,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__turbo_block1a_address
     BOOST_CHECK_EQUAL(out.at(3).fee, history::missing_prevout);               // tx6
 }
 
-BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__limited__limited_empty)
+BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__limited__depth_limited_empty)
 {
     settings settings{};
     settings.path = TEST_DIRECTORY;
@@ -310,11 +310,11 @@ BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__limited__limited_empt
     const auto& hash = test::block1a_address0;
 
     // Limited returned when limit precludes reaching address cursor (or terminal).
-    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 0, true), error::limited);
+    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     cursor = address_link::terminal;
-    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 8, true), error::limited);
+    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     cursor = address_link::terminal;

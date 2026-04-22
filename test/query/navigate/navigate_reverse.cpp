@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__terminal__not_reduced)
     BOOST_REQUIRE_EQUAL(out.at(5), 81u);
 }
 
-BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__limit__limited)
+BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__limit__depth_limited)
 {
     settings settings{};
     settings.path = TEST_DIRECTORY;
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__limit__limited)
     output_links out{};
     address_link end{};
     const std::atomic_bool cancel{};
-    BOOST_REQUIRE_EQUAL(query.to_address_outputs(cancel, end, out, test::block1a_address0, 4), error::limited);
+    BOOST_REQUIRE_EQUAL(query.to_address_outputs(cancel, end, out, test::block1a_address0, 4), error::depth_limited);
 
     // The limit is applied before deduplication.
     // There are 6 instances of the `script{ { { opcode::pick } } }` output, limited to 4.
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__limit__limited)
     ////BOOST_REQUIRE_EQUAL(out.at(5), 81u);
 }
 
-BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__stop_mismatch__populated_not_found)
+BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__stop_mismatch__populated_invalid_cursor)
 {
     settings settings{};
     settings.path = TEST_DIRECTORY;
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__stop_mismatch__populat
     address_link cursor{ 4242 };
     const std::atomic_bool cancel{};
     const auto ec = query.to_address_outputs(cancel, cursor, out, test::block1a_address0);
-    BOOST_REQUIRE_EQUAL(ec, error::not_found);
+    BOOST_REQUIRE_EQUAL(ec, error::invalid_cursor);
 
     // The end was not found but the full list is returned.
     BOOST_REQUIRE_EQUAL(out.size(), 6u);

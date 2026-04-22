@@ -68,7 +68,7 @@ code CLASS::to_touched_txs(const stopper& cancel, tx_links& out,
     for (const auto& output: std::views::reverse(outputs))
     {
         if (cancel)
-            return error::canceled;
+            return error::query_canceled;
 
         if (const auto tx = to_output_tx(output); tx.is_terminal())
             return error::integrity;
@@ -113,13 +113,13 @@ code CLASS::to_address_outputs(const stopper& cancel, address_link& cursor,
     for (cursor = it.get(); it; ++it)
     {
         if (cancel)
-            return error::canceled;
+            return error::query_canceled;
 
         if (it.get() == end)
             return error::success;
 
         if (is_zero(limit--))
-            return error::limited;
+            return error::depth_limited;
 
         table::address::record address{};
         if (!store_.address.get(it, address))
@@ -128,7 +128,7 @@ code CLASS::to_address_outputs(const stopper& cancel, address_link& cursor,
         out.push_back(address.output_fk);
     }
 
-    return end.is_terminal() ? error::success : error::not_found;
+    return end.is_terminal() ? error::success : error::invalid_cursor;
 }
 
 // input|output|prevout->tx[parent]

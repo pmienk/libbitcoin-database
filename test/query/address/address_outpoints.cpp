@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_address_outpoints1__genesis__expected)
     BOOST_REQUIRE(*out.begin() == query.get_outpoint(query.to_output(0, 0)));
 }
 
-BOOST_AUTO_TEST_CASE(query_address__get_address_outpoints1__cancel__canceled_false)
+BOOST_AUTO_TEST_CASE(query_address__get_address_outpoints1__cancel__query_canceled_false)
 {
     settings settings{};
     settings.path = TEST_DIRECTORY;
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_address_outpoints1__cancel__canceled_fal
 
     outpoints out{};
     std::atomic_bool cancel{ true };
-    BOOST_REQUIRE_EQUAL(query.get_address_outpoints(cancel, out, test::genesis_address0), error::canceled);
+    BOOST_REQUIRE_EQUAL(query.get_address_outpoints(cancel, out, test::genesis_address0), error::query_canceled);
     BOOST_REQUIRE(out.empty());
 }
 
