@@ -152,19 +152,20 @@ history CLASS::get_tx_history(hash_digest&& key,
     auto position = history::unconfirmed_position;
 
     const auto block = find_strong(link);
-    if (is_confirmed_block(block))
-    {
-        if (!get_height(height, block) ||
-            !get_tx_position(position, link, block))
-            return {};
-    }
-    else
+    const auto at = get_confirmed_height(block);
+    if (at.is_terminal())
     {
         if (!get_tx_fee(fee, link))
             fee = history::missing_prevout;
 
         if (is_confirmed_all_prevouts(link))
             height = history::rooted_height;
+    }
+    else
+    {
+        height = at.value;
+        if (!get_tx_position(position, link, block))
+            return {};
     }
 
     return { { std::move(key), height }, fee, position };
@@ -186,18 +187,18 @@ history CLASS::get_tx_confirmed_history(hash_digest&& key,
         return { .position = zero };
 
     const auto block = find_strong(link);
+    const auto at = get_confirmed_height(block);
 
     // Returns invalid (filtered) but also !confirmed().
-    if (!is_confirmed_block(block))
+    if (at.is_terminal())
         return { .position = history::unconfirmed_position };
 
-    size_t height{}, position{};
-    if (!get_height(height, block) ||
-        !get_tx_position(position, link, block))
+    size_t position{};
+    if (!get_tx_position(position, link, block))
         return { .position = zero };
 
     // Electrum uses fees only on unconfirmed (expensive).
-    return { { std::move(key), height }, history::missing_prevout, position };
+    return { { std::move(key), at.value }, history::missing_prevout, position };
 }
 
 TEMPLATE
@@ -216,7 +217,7 @@ history CLASS::get_tx_unconfirmed_history(hash_digest&& key,
         return { .position = history::unconfirmed_position };
 
     // Returns invalid (filtered) but also confirmed().
-    if (is_confirmed_block(find_strong(link)))
+    if (!get_confirmed_height(find_strong(link)).is_terminal())
         return { .position = zero };
 
     uint64_t fee{};

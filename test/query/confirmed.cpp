@@ -56,6 +56,37 @@ BOOST_AUTO_TEST_CASE(query_confirmed__is_candidate_block__push_pop_candidate__ex
     BOOST_REQUIRE(!query.is_candidate_header(database::header_link::terminal));
 }
 
+BOOST_AUTO_TEST_CASE(query_confirmed__get_confirmed_height__push_pop_confirmed__expected)
+{
+    settings settings{};
+    settings.path = TEST_DIRECTORY;
+    test::chunk_store store{ settings };
+    test::query_accessor query{ store };
+    BOOST_REQUIRE(!store.create(test::events_handler));
+    BOOST_REQUIRE(query.initialize(test::genesis));
+    BOOST_REQUIRE(query.set(test::block1, context{ 0, 1, 0 }, false, false));
+    BOOST_REQUIRE(query.set(test::block2, context{ 0, 2, 0 }, false, false));
+    BOOST_REQUIRE(!query.get_confirmed_height(0).is_terminal());
+    BOOST_REQUIRE(query.get_confirmed_height(1).is_terminal());
+    BOOST_REQUIRE(query.get_confirmed_height(2).is_terminal());
+
+    BOOST_REQUIRE(query.push_confirmed(1, false));
+    BOOST_REQUIRE(!query.get_confirmed_height(1).is_terminal());
+
+    BOOST_REQUIRE(query.push_confirmed(2, false));
+    BOOST_REQUIRE(!query.get_confirmed_height(2).is_terminal());
+
+    BOOST_REQUIRE(query.pop_confirmed());
+    BOOST_REQUIRE(!query.get_confirmed_height(0).is_terminal());
+    BOOST_REQUIRE(!query.get_confirmed_height(1).is_terminal());
+    BOOST_REQUIRE(query.get_confirmed_height(2).is_terminal());
+
+    BOOST_REQUIRE(!!query.pop_confirmed());
+    BOOST_REQUIRE(!query.get_confirmed_height(0).is_terminal());
+    BOOST_REQUIRE(query.get_confirmed_height(1).is_terminal());
+    BOOST_REQUIRE(query.get_confirmed_height(2).is_terminal());
+}
+
 BOOST_AUTO_TEST_CASE(query_confirmed__is_confirmed_block__push_pop_confirmed__expected)
 {
     settings settings{};

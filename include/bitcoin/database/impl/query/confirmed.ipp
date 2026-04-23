@@ -24,7 +24,7 @@
 
 namespace libbitcoin {
 namespace database {
-  
+
 // find_confirmed
 // ----------------------------------------------------------------------------
 // These ensure both strong and candidate/confirmed indexation.

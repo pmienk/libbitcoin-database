@@ -107,22 +107,22 @@ code CLASS::get_confirmed_unspent(const stopper& cancel, unspents& out,
             // chain::outpoint invalid in default construction (filter).
             const auto& tx = out.parent_fk;
             const auto block = find_strong(tx);
-            if (!is_confirmed_block(block))
+            const auto at = get_confirmed_height(block);
+            if (at.is_terminal())
                 return unspent{};
 
-            size_t height{}, position{};
+            size_t position{};
             auto hash = get_tx_key(tx);
             const auto index = to_output_index(tx, link);
             if ((index == point::null_index) || (hash == system::null_hash) ||
-                !get_height(height, block) ||
                 !get_tx_position(position, tx, block))
             {
                 fail = true;
                 return unspent{};
             }
 
-            return unspent{ { { std::move(hash), index }, out.value }, height,
-                position };
+            return unspent{ { { std::move(hash), index }, out.value },
+                at.value, position };
         });
 }
 
@@ -163,11 +163,12 @@ code CLASS::get_unspent(const stopper& cancel, unspents& out,
 
             auto height = unspent::unused_height;
             auto position = unspent::unconfirmed_position;
-            if (const auto block = find_strong(tx);
-                is_confirmed_block(block))
+            const auto block = find_strong(tx);
+            const auto at = get_confirmed_height(block);
+            if (!at.is_terminal())
             {
-                if (!get_height(height, block) ||
-                    !get_tx_position(position, tx, block))
+                height = at.value;
+                if (!get_tx_position(position, tx, block))
                 {
                     fail = true;
                     return unspent{};
