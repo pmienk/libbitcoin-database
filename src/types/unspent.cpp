@@ -60,6 +60,12 @@ bool unspent::valid() const NOEXCEPT
     return out.is_valid();
 }
 
+bool unspent::fault() const NOEXCEPT
+{
+    // Invalid with default position implies fault (return {}).
+    return !valid() && is_zero(position);
+}
+
 bool unspent::confirmed() const NOEXCEPT
 {
     return position != unconfirmed_position;

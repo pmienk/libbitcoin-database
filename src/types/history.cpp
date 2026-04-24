@@ -80,6 +80,12 @@ bool history::valid() const NOEXCEPT
     return tx.is_valid();
 }
 
+bool history::fault() const NOEXCEPT
+{
+    // Invalid with default position implies fault (return {}).
+    return !valid() && is_zero(position);
+}
+
 // Only applies when !confirmed, and only other option is unrooted_height.
 bool history::rooted() const NOEXCEPT
 {

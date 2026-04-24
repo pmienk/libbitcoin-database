@@ -22,6 +22,9 @@
 
 BOOST_FIXTURE_TEST_SUITE(query_navigate_tests, test::directory_setup_fixture)
 
+const auto& address0 = test::block1a_address0;
+const auto& address1 = test::block1a_address1;
+
 // to_parent
 
 BOOST_AUTO_TEST_CASE(query_navigate__to_parent__always__expected)
@@ -56,7 +59,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_touched_txs1__always__expected)
     BOOST_REQUIRE(setup_three_block_unconfirmed_address_store(query));
 
     output_links links{};
-    BOOST_REQUIRE(!query.to_address_outputs(links, test::block1a_address1));
+    BOOST_REQUIRE(!query.to_address_outputs(links, address1));
 
     tx_links out{};
     BOOST_REQUIRE(!query.to_touched_txs(out, links));
@@ -84,7 +87,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_touched_txs2__always__expected)
 
     output_links links{};
     const std::atomic_bool cancel{};
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, links, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, links, address0));
 
     tx_links out{};
     BOOST_REQUIRE(!query.to_touched_txs(cancel, out, links));
@@ -119,7 +122,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs1__always__expected)
     BOOST_REQUIRE(setup_three_block_unconfirmed_address_store(query));
 
     output_links out{};
-    BOOST_REQUIRE(!query.to_address_outputs(out, test::block1a_address1));
+    BOOST_REQUIRE(!query.to_address_outputs(out, address1));
 
     // There is 1 instance of the `script{ { { opcode::roll } } }` output.
     BOOST_REQUIRE_EQUAL(out.size(), 1u);
@@ -139,7 +142,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs2__always__expected)
 
     output_links out{};
     const std::atomic_bool cancel{};
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, out, address0));
 
     // There are 6 instances of the `script{ { { opcode::pick } } }` output.
     BOOST_REQUIRE_EQUAL(out.size(), 6u);
@@ -165,7 +168,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__terminal__not_reduced)
     output_links out{};
     address_link end{};
     const std::atomic_bool cancel{};
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, end, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, end, out, address0, max_size_t));
 
     // There are 6 instances of the `script{ { { opcode::pick } } }` output.
     BOOST_REQUIRE_EQUAL(out.size(), 6u);
@@ -189,7 +192,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__limit__depth_limited)
     output_links out{};
     address_link end{};
     const std::atomic_bool cancel{};
-    BOOST_REQUIRE_EQUAL(query.to_address_outputs(cancel, end, out, test::block1a_address0, 4), error::depth_limited);
+    BOOST_REQUIRE_EQUAL(query.to_address_outputs(cancel, end, out, address0, 4), error::depth_limited);
 
     // The limit is applied before deduplication.
     // There are 6 instances of the `script{ { { opcode::pick } } }` output, limited to 4.
@@ -214,7 +217,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__stop_mismatch__populat
     output_links out{};
     address_link cursor{ 4242 };
     const std::atomic_bool cancel{};
-    const auto ec = query.to_address_outputs(cancel, cursor, out, test::block1a_address0);
+    const auto ec = query.to_address_outputs(cancel, cursor, out, address0, max_size_t);
     BOOST_REQUIRE_EQUAL(ec, error::invalid_cursor);
 
     // The end was not found but the full list is returned.
@@ -239,7 +242,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__stop_match__expected)
     output_links out{};
     address_link cursor{ 3 };
     const std::atomic_bool cancel{};
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, address0, max_size_t));
     BOOST_REQUIRE_EQUAL(cursor.value, 7u);
 
     // The stop was found so partial list is returned.
@@ -264,7 +267,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__progression__expected)
 
     // Add three unconfirmed blocks and two txs, with 7 outputs, 6 matching address.
     BOOST_REQUIRE(setup_three_block_unconfirmed_address_store(query));
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, address0, max_size_t));
     BOOST_REQUIRE_EQUAL(cursor.value, 7u);
     BOOST_REQUIRE_EQUAL(out.size(), 6u);
     BOOST_REQUIRE_EQUAL(out.at(0), 123u);
@@ -277,7 +280,7 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__progression__expected)
     // Add two unconfirmed blocks with 3 outputs, all matching address.
     BOOST_REQUIRE(query.set(test::block1b, database::context{ 0, 1, 0 }, false, false));
     BOOST_REQUIRE(query.set(test::block2b, database::context{ 0, 2, 0 }, false, false));
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, address0, max_size_t));
     BOOST_REQUIRE_EQUAL(cursor.value, 10u);
     BOOST_REQUIRE_EQUAL(out.size(), 3u);
     BOOST_REQUIRE_EQUAL(out.at(0), 144u);
@@ -286,13 +289,13 @@ BOOST_AUTO_TEST_CASE(query_navigate__to_address_outputs3__progression__expected)
 
     // Add one tx with one output, matching address.
     BOOST_REQUIRE(query.set(test::tx2b));
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, address0, max_size_t));
     BOOST_REQUIRE_EQUAL(cursor.value, 11u);
     BOOST_REQUIRE_EQUAL(out.size(), 1u);
     BOOST_REQUIRE_EQUAL(out.at(0), 151u);
 
     // No changes to this address since cursor.
-    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, test::block1a_address0));
+    BOOST_REQUIRE(!query.to_address_outputs(cancel, cursor, out, address0, max_size_t));
     BOOST_REQUIRE_EQUAL(cursor.value, 11u);
     BOOST_REQUIRE(out.empty());
 }

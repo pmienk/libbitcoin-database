@@ -53,28 +53,9 @@ code CLASS::get_unconfirmed_unspent(const stopper& cancel, unspents& out,
             if (cancel || fail || is_spent(link))
                 return unspent{};
 
-            table::output::get_parent_value out{};
-            if (!store_.output.get(link, out))
-            {
-                fail = true;
-                return unspent{};
-            }
-
-            // chain::outpoint invalid in default construction (filter).
-            const auto& tx = out.parent_fk;
-            if (is_confirmed_block(find_strong(tx)))
-                return unspent{};
-
-            auto hash = get_tx_key(tx);
-            const auto index = to_output_index(tx, link);
-            if ((index == point::null_index) || (hash == system::null_hash))
-            {
-                fail = true;
-                return unspent{};
-            }
-
-            return unspent{ { { std::move(hash), index }, out.value },
-                unspent::unused_height, unspent::unconfirmed_position };
+            const auto out = get_tx_unconfirmed_unspent(link);
+            if (out.fault()) fail = true;
+            return out;
         });
 }
 
@@ -97,32 +78,9 @@ code CLASS::get_confirmed_unspent(const stopper& cancel, unspents& out,
             if (cancel || fail || is_confirmed_spent(link))
                 return unspent{};
 
-            table::output::get_parent_value out{};
-            if (!store_.output.get(link, out))
-            {
-                fail = true;
-                return unspent{};
-            }
-
-            // chain::outpoint invalid in default construction (filter).
-            const auto& tx = out.parent_fk;
-            const auto block = find_strong(tx);
-            const auto at = get_confirmed_height(block);
-            if (at.is_terminal())
-                return unspent{};
-
-            size_t position{};
-            auto hash = get_tx_key(tx);
-            const auto index = to_output_index(tx, link);
-            if ((index == point::null_index) || (hash == system::null_hash) ||
-                !get_tx_position(position, tx, block))
-            {
-                fail = true;
-                return unspent{};
-            }
-
-            return unspent{ { { std::move(hash), index }, out.value },
-                at.value, position };
+            const auto out = get_tx_confirmed_unspent(link);
+            if (out.fault()) fail = true;
+            return out;
         });
 }
 
@@ -145,39 +103,90 @@ code CLASS::get_unspent(const stopper& cancel, unspents& out,
             if (cancel || fail || is_spent(link))
                 return unspent{};
 
-            table::output::get_parent_value out{};
-            if (!store_.output.get(link, out))
-            {
-                fail = true;
-                return unspent{};
-            }
-
-            const auto& tx = out.parent_fk;
-            auto hash = get_tx_key(tx);
-            const auto index = to_output_index(tx, link);
-            if ((index == point::null_index) || (hash == system::null_hash))
-            {
-                fail = true;
-                return unspent{};
-            }
-
-            auto height = unspent::unused_height;
-            auto position = unspent::unconfirmed_position;
-            const auto block = find_strong(tx);
-            const auto at = get_confirmed_height(block);
-            if (!at.is_terminal())
-            {
-                height = at.value;
-                if (!get_tx_position(position, tx, block))
-                {
-                    fail = true;
-                    return unspent{};
-                }
-            }
-
-            return unspent{ { { std::move(hash), index }, out.value }, height,
-                position };
+            auto out = get_tx_unspent(link);
+            if (out.fault()) fail = true;
+            return out;
         });
+}
+
+// Unspent queries.
+// ----------------------------------------------------------------------------
+
+TEMPLATE
+unspent CLASS::get_tx_unspent(const output_link& link) const NOEXCEPT
+{
+    table::output::get_parent_value out{};
+    if (!store_.output.get(link, out))
+        return {};
+
+    const auto tx = out.parent_fk;
+    auto hash = get_tx_key(tx);
+    const auto index = to_output_index(tx, link);
+    if ((index == point::null_index) || (hash == system::null_hash))
+        return {};
+
+    auto height = unspent::unused_height;
+    auto position = unspent::unconfirmed_position;
+
+    const auto block = find_strong(tx);
+    const auto at = get_confirmed_height(block);
+    if (!at.is_terminal())
+    {
+        height = at.value;
+        if (!get_tx_position(position, tx, block))
+            return {};
+    }
+
+    return { { { std::move(hash), index }, out.value }, height, position };
+}
+
+TEMPLATE
+unspent CLASS::get_tx_confirmed_unspent(const output_link& link) const NOEXCEPT
+{
+    // unspent is invalid in default construction with position.
+    table::output::get_parent_value out{};
+    if (!store_.output.get(link, out))
+        return {};
+
+    const auto tx = out.parent_fk;
+    const auto block = find_strong(tx);
+    const auto at = get_confirmed_height(block);
+
+    // Invalid with unconfirmed_position signals no fault.
+    if (at.is_terminal())
+        return { .position = unspent::unconfirmed_position };
+
+    size_t position{};
+    auto hash = get_tx_key(tx);
+    const auto index = to_output_index(tx, link);
+    if ((index == point::null_index) || (hash == system::null_hash) ||
+        !get_tx_position(position, tx, block))
+        return {};
+
+    return { { { std::move(hash), index }, out.value }, at.value, position };
+}
+
+TEMPLATE
+unspent CLASS::get_tx_unconfirmed_unspent(const output_link& link) const NOEXCEPT
+{
+    // unspent is invalid in default construction with position.
+    table::output::get_parent_value out{};
+    if (!store_.output.get(link, out))
+        return {};
+
+    const auto tx = out.parent_fk;
+
+    // Invalid with unconfirmed_position signals no fault.
+    if (!get_confirmed_height(find_strong(tx)).is_terminal())
+        return { .position = unspent::unconfirmed_position };
+
+    auto hash = get_tx_key(tx);
+    const auto index = to_output_index(tx, link);
+    if ((index == point::null_index) || (hash == system::null_hash))
+        return {};
+
+    return { { { std::move(hash), index }, out.value }, unspent::unused_height,
+        unspent::unconfirmed_position };
 }
 
 // utilities

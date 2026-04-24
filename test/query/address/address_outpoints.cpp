@@ -173,26 +173,4 @@ BOOST_AUTO_TEST_CASE(query_address__get_address_outpoints1__cancel__query_cancel
     BOOST_REQUIRE(out.empty());
 }
 
-// get_address_outpoints2
-
-BOOST_AUTO_TEST_CASE(query_address__get_address_outpoints2__progressive_cursor__expected)
-{
-    settings settings{};
-    settings.path = TEST_DIRECTORY;
-    test::chunk_store store{ settings };
-    test::query_accessor query{ store };
-    BOOST_REQUIRE(!store.create(test::events_handler));
-    BOOST_REQUIRE(query.initialize(test::genesis));
-
-    outpoints out{};
-    address_link cursor{};
-    const std::atomic_bool cancel{};
-    BOOST_REQUIRE(!query.get_address_outpoints(cancel, cursor, out, test::genesis_address0));
-    BOOST_REQUIRE_EQUAL(out.size(), 1u);
-    BOOST_REQUIRE_EQUAL(cursor, 0u);
-    BOOST_REQUIRE(*out.begin() == query.get_outpoint(query.to_output(0, 0)));
-
-    // TODO: add same tx again.
-}
-
 BOOST_AUTO_TEST_SUITE_END()

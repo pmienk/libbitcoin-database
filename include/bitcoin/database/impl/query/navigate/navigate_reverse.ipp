@@ -100,7 +100,7 @@ code CLASS::to_address_outputs(const stopper& cancel, output_links& out,
     const hash_digest& key) const NOEXCEPT
 {
     address_link cursor{};
-    return to_address_outputs(cancel, cursor, out, key);
+    return to_address_outputs(cancel, cursor, out, key, max_size_t);
 }
 
 TEMPLATE

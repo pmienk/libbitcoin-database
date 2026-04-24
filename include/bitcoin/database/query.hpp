@@ -317,13 +317,15 @@ public:
         const output_links& outputs) const NOEXCEPT;
     code to_touched_txs(const stopper& cancel, tx_links& out,
         const output_links& outputs) const NOEXCEPT;
+
     code to_address_outputs(output_links& out,
         const hash_digest& key) const NOEXCEPT;
     code to_address_outputs(const stopper& cancel, output_links& out,
         const hash_digest& key) const NOEXCEPT;
+
     code to_address_outputs(const stopper& cancel, address_link& cursor,
         output_links& out, const hash_digest& key,
-        size_t limit=max_size_t) const NOEXCEPT;
+        size_t limit) const NOEXCEPT;
 
     /// Archive reads.
     /// -----------------------------------------------------------------------
@@ -632,25 +634,15 @@ public:
         const hash_digest& key, uint64_t value, bool turbo=false) const NOEXCEPT;
     code get_address_outpoints(const stopper& cancel, outpoints& out,
         const hash_digest& key, bool turbo=false) const NOEXCEPT;
-    code get_address_outpoints(const stopper& cancel, address_link& cursor,
-        outpoints& out, const hash_digest& key, bool turbo=false) const NOEXCEPT;
 
     /// Electrum queries (histories, deduped, electrum sort).
     code get_unconfirmed_history(const stopper& cancel, histories& out,
-        const hash_digest& key, bool turbo=false) const NOEXCEPT;
-    code get_confirmed_history(const stopper& cancel, histories& out,
-        const hash_digest& key, bool turbo=false) const NOEXCEPT;
-    code get_history(const stopper& cancel, histories& out,
-        const hash_digest& key, bool turbo=false) const NOEXCEPT;
-
-    /// Electrum queries (with limit and cursor options).
-    code get_unconfirmed_history(const stopper& cancel, address_link& cursor,
+        const hash_digest& key, size_t limit=max_size_t,
+        bool turbo=false) const NOEXCEPT;
+    code get_confirmed_history(const stopper& cancel, height_link& cursor,
         histories& out, const hash_digest& key, size_t limit=max_size_t,
         bool turbo=false) const NOEXCEPT;
-    code get_confirmed_history(const stopper& cancel, address_link& cursor,
-        histories& out, const hash_digest& key,size_t limit=max_size_t,
-        bool turbo=false) const NOEXCEPT;
-    code get_history(const stopper& cancel, address_link& cursor,
+    code get_history(const stopper& cancel, height_link& cursor,
         histories& out, const hash_digest& key, size_t limit=max_size_t,
         bool turbo=false) const NOEXCEPT;
 
@@ -672,12 +664,20 @@ public:
         bool turbo=false) const NOEXCEPT;
 
     /// History queries.
-    history get_tx_history(const tx_link& link) const NOEXCEPT;
-    history get_tx_confirmed_history(const tx_link& link) const NOEXCEPT;
+    history get_tx_history(const tx_link& link, size_t start=zero,
+        size_t end=max_size_t) const NOEXCEPT;
+    history get_tx_confirmed_history(const tx_link& link, size_t start=zero,
+        size_t end=max_size_t) const NOEXCEPT;
     history get_tx_unconfirmed_history(const tx_link& link) const NOEXCEPT;
+
     histories get_spenders_history(const point& prevout) const NOEXCEPT;
     histories get_spenders_history(const hash_digest& key,
         uint32_t index) const NOEXCEPT;
+
+    /// Unspent queries.
+    unspent get_tx_unspent(const output_link& link) const NOEXCEPT;
+    unspent get_tx_confirmed_unspent(const output_link& link) const NOEXCEPT;
+    unspent get_tx_unconfirmed_unspent(const output_link& link) const NOEXCEPT;
 
     /// Filters.
     /// -----------------------------------------------------------------------
@@ -842,15 +842,14 @@ protected:
     /// History.
     /// -----------------------------------------------------------------------
 
-    history get_tx_history(hash_digest&& key,
-        const tx_link& link) const NOEXCEPT;
-    history get_tx_confirmed_history(hash_digest&& key,
-        const tx_link& link) const NOEXCEPT;
+    history get_tx_history(hash_digest&& key, const tx_link& link,
+        size_t start, size_t end) const NOEXCEPT;
+    history get_tx_confirmed_history(hash_digest&& key, const tx_link& link,
+        size_t start, size_t end) const NOEXCEPT;
     history get_tx_unconfirmed_history(hash_digest&& key,
         const tx_link& link) const NOEXCEPT;
-
-    code get_address_txs(const stopper& cancel, address_link& cursor,
-        tx_links& out, const hash_digest& key, size_t limit) const NOEXCEPT;
+    code get_address_txs(const stopper& cancel, tx_links& out,
+        const hash_digest& key, size_t limit) const NOEXCEPT;
 
 private:
     // This value should never be read, but may be useful in debugging.

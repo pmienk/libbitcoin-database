@@ -36,8 +36,11 @@ struct BCD_API history
     /// Filter out invalid history elements (txs) and sort.
     static void filter_sort_and_dedup(std::vector<history>& history) NOEXCEPT;
 
-    /// The tx is valid (not defaulted).
+    /// The tx is valid.
     bool valid() const NOEXCEPT;
+
+    /// A fault occured (and the tx is not valid).
+    bool fault() const NOEXCEPT;
 
     /// The unconfirmed tx is rooted in chain (all prevouts confirmed).
     bool rooted() const NOEXCEPT;

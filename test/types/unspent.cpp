@@ -87,11 +87,32 @@ BOOST_AUTO_TEST_CASE(unspent__equality__same__true)
 
 BOOST_AUTO_TEST_CASE(unspent__valid__always__expected)
 {
-    const auto valid = unspent{ { { hash_digest{}, 0 }, 42 }, 2, 3 }.valid();
-    BOOST_REQUIRE(valid);
+    const auto valid1 = unspent{ { { hash_digest{}, 0 }, 42 }, 2, 0 }.valid();
+    BOOST_REQUIRE(valid1);
 
-    const auto invalid = !unspent{ {}, 2, 3 }.valid();
-    BOOST_REQUIRE(invalid);
+    const auto valid2 = unspent{ { { hash_digest{}, 0 }, 42 }, 2, unspent::unconfirmed_position }.valid();
+    BOOST_REQUIRE(valid2);
+
+    const auto invalid1 = !unspent{ {}, 2, 3 }.valid();
+    BOOST_REQUIRE(invalid1);
+
+    const auto invalid2 = !unspent{ {}, 2, unspent::unconfirmed_position }.valid();
+    BOOST_REQUIRE(invalid2);
+}
+
+BOOST_AUTO_TEST_CASE(unspent__fault__always__expected)
+{
+    const auto fault1 = unspent{}.fault();
+    BOOST_REQUIRE(fault1);
+
+    const auto fault2 = unspent{ {}, 2, 0 }.fault();
+    BOOST_REQUIRE(fault2);
+
+    const auto nonfault1 = !unspent{ {}, 2, 3 }.fault();
+    BOOST_REQUIRE(nonfault1);
+
+    const auto nonfault2 = !unspent{ {}, 2, unspent::unconfirmed_position }.fault();
+    BOOST_REQUIRE(nonfault2);
 }
 
 BOOST_AUTO_TEST_CASE(unspent__confirmed__always__expected)
