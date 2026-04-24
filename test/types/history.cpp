@@ -104,11 +104,32 @@ BOOST_AUTO_TEST_CASE(history__equality__same__true)
 
 BOOST_AUTO_TEST_CASE(history__valid__always__expected)
 {
-    const auto valid = history{ { hash_digest{}, 42 }, 2, 3 }.valid();
-    BOOST_REQUIRE(valid);
+    const auto valid1 = history{ { hash_digest{}, 42 }, 2, 0 }.valid();
+    BOOST_REQUIRE(valid1);
 
-    const auto invalid = !history{ checkpoint{}, 2, 3 }.valid();
-    BOOST_REQUIRE(invalid);
+    const auto valid2 = history{ { hash_digest{}, 42 }, 2, history::unconfirmed_position }.valid();
+    BOOST_REQUIRE(valid2);
+
+    const auto invalid1 = !history{ checkpoint{}, 2, 3 }.valid();
+    BOOST_REQUIRE(invalid1);
+
+    const auto invalid2 = !history{ checkpoint{}, 2, history::unconfirmed_position }.valid();
+    BOOST_REQUIRE(invalid2);
+}
+
+BOOST_AUTO_TEST_CASE(history__fault__always__expected)
+{
+    const auto fault1 = history{}.fault();
+    BOOST_REQUIRE(fault1);
+
+    const auto fault2 = history{ checkpoint{}, 2, 0 }.fault();
+    BOOST_REQUIRE(fault2);
+
+    const auto nonfault1 = !history{ checkpoint{}, 2, 3 }.fault();
+    BOOST_REQUIRE(nonfault1);
+
+    const auto nonfault2 = !history{ checkpoint{}, 2, history::unconfirmed_position }.fault();
+    BOOST_REQUIRE(nonfault2);
 }
 
 BOOST_AUTO_TEST_CASE(history__rooted__always__expected)

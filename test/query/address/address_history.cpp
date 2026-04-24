@@ -40,14 +40,18 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__genesis__expected)
     BOOST_CHECK_EQUAL(out.size(), 0u);
 
     out.clear();
-    BOOST_CHECK(!query.get_confirmed_history(cancel, out, hash));
+    height_link cursor{};
+    BOOST_CHECK(!query.get_confirmed_history(cancel, cursor, out, hash));
+    BOOST_REQUIRE_EQUAL(out.size(), 1u);
     BOOST_CHECK_EQUAL(out.at(0).fee, history::missing_prevout);
     BOOST_CHECK_EQUAL(out.at(0).position, 0u);
     BOOST_CHECK_EQUAL(out.at(0).tx.height(), 0u);
     BOOST_CHECK_EQUAL(out.at(0).tx.hash(), test::genesis.transactions_ptr()->at(0)->hash(false));
 
     out.clear();
-    BOOST_CHECK(!query.get_history(cancel, out, hash));
+    cursor = {};
+    BOOST_CHECK(!query.get_history(cancel, cursor, out, hash));
+    BOOST_REQUIRE_EQUAL(out.size(), 1u);
     BOOST_CHECK_EQUAL(out.at(0).fee, history::missing_prevout);
     BOOST_CHECK_EQUAL(out.at(0).position, 0u);
     BOOST_CHECK_EQUAL(out.at(0).tx.height(), 0u);
@@ -64,9 +68,10 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__turbo_block1a_address0__expecte
     BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
 
     histories out{};
+    height_link cursor{};
     const std::atomic_bool cancel{};
-    BOOST_CHECK(!query.get_history(cancel, out, test::block1a_address0, true));
-    BOOST_CHECK_EQUAL(out.size(), 8u);
+    BOOST_CHECK(!query.get_history(cancel, cursor, out, test::block1a_address0, max_size_t, true));
+    BOOST_REQUIRE_EQUAL(out.size(), 8u);
 
     // Identities (not part of sort).
     BOOST_CHECK_EQUAL(out.at(0).tx.hash(), test::block1a.transactions_ptr()->at(0)->hash(false)); // tx1/tx1 (same)
@@ -127,7 +132,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__limited__depth_limited_empty)
     BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
 
     histories out{};
-    address_link cursor{};
+    height_link cursor{};
     const std::atomic_bool cancel{};
     const auto& hash = test::block1a_address0;
 
@@ -135,17 +140,55 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__limited__depth_limited_empty)
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = address_link::terminal;
+    cursor = {};
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = address_link::terminal;
+    cursor = {};
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 9, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 8u);
 
-    cursor = address_link::terminal;
+    cursor = {};
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 100, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 8u);
+}
+
+BOOST_AUTO_TEST_CASE(query_address__get_history__start__excludes_prior)
+{
+    settings settings{};
+    settings.path = TEST_DIRECTORY;
+    test::chunk_store store{ settings };
+    test::query_accessor query{ store };
+    BOOST_CHECK(!store.create(test::events_handler));
+    BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
+
+    histories out{};
+    height_link cursor{ 42 };
+    const std::atomic_bool cancel{};
+    const auto& hash = test::block1a_address0;
+
+    // Limited returned when limit precludes reaching the address cursor (or terminal).
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
+    BOOST_CHECK(out.empty());
+
+    cursor = 42;
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
+    BOOST_CHECK(out.empty());
+
+    // Only unconfirmed.
+    cursor = 42;
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 9, true), error::success);
+    BOOST_CHECK_EQUAL(out.size(), 4u);
+        
+    // Only excludes genesis.
+    cursor = 1;
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 100, true), error::success);
+    BOOST_CHECK_EQUAL(out.size(), 8u);
+
+    // Excludes block1a which has one confirmed touching tx.
+    cursor = 2;
+    BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 100, true), error::success);
+    BOOST_CHECK_EQUAL(out.size(), 7u);
 }
 
 // ----------------------------------------------------------------------------
@@ -188,8 +231,8 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__turbo_block1a_addre
 
     histories out{};
     const std::atomic_bool cancel{};
-    BOOST_CHECK(!query.get_unconfirmed_history(cancel, out, test::block1a_address0, true));
-    BOOST_CHECK_EQUAL(out.size(), 4u);
+    BOOST_CHECK(!query.get_unconfirmed_history(cancel, out, test::block1a_address0, max_size_t, true));
+    BOOST_REQUIRE_EQUAL(out.size(), 4u);
 
     // Identities (not part of sort).
     BOOST_CHECK_EQUAL(out.at(0).tx.hash(), test::tx5.hash(false));                                // tx5
@@ -233,24 +276,20 @@ BOOST_AUTO_TEST_CASE(query_address__get_unconfirmed_history__limited__depth_limi
     BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
 
     histories out{};
-    address_link cursor{};
     const std::atomic_bool cancel{};
     const auto& hash = test::block1a_address0;
 
     // Limited returned when limit precludes reaching the address cursor (or terminal).
-    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
+    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = address_link::terminal;
-    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
+    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = address_link::terminal;
-    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 9, true), error::success);
+    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, out, hash, 9, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 4u);
 
-    cursor = address_link::terminal;
-    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, cursor, out, hash, 100, true), error::success);
+    BOOST_CHECK_EQUAL(query.get_unconfirmed_history(cancel, out, hash, 100, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 4u);
 }
 
@@ -266,9 +305,10 @@ BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__turbo_block1a_address
     BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
 
     histories out{};
+    height_link cursor{};
     const std::atomic_bool cancel{};
-    BOOST_CHECK(!query.get_confirmed_history(cancel, out, test::block1a_address0, true));
-    BOOST_CHECK_EQUAL(out.size(), 4u);
+    BOOST_CHECK(!query.get_confirmed_history(cancel, cursor, out, test::block1a_address0, max_size_t, true));
+    BOOST_REQUIRE_EQUAL(out.size(), 4u);
 
     // Identities (not part of sort).
     BOOST_CHECK_EQUAL(out.at(0).tx.hash(), test::block1a.transactions_ptr()->at(0)->hash(false)); // tx1/tx1 (same)
@@ -305,7 +345,7 @@ BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__limited__depth_limite
     BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
 
     histories out{};
-    address_link cursor{};
+    height_link cursor{};
     const std::atomic_bool cancel{};
     const auto& hash = test::block1a_address0;
 
@@ -313,17 +353,51 @@ BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__limited__depth_limite
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = address_link::terminal;
+    cursor = {};
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = address_link::terminal;
+    cursor = {};
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 9, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 4u);
 
-    cursor = address_link::terminal;
+    cursor = {};
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 100, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 4u);
+}
+
+BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__start__excludes_prior)
+{
+    settings settings{};
+    settings.path = TEST_DIRECTORY;
+    test::chunk_store store{ settings };
+    test::query_accessor query{ store };
+    BOOST_CHECK(!store.create(test::events_handler));
+    BOOST_CHECK(test::setup_three_block_confirmed_address_store(query));
+
+    histories out{};
+    height_link cursor{ 42 };
+    const std::atomic_bool cancel{};
+    const auto& hash = test::block1a_address0;
+
+    // Limited returned when limit precludes reaching address cursor (or terminal).
+    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
+    BOOST_CHECK(out.empty());
+
+    // Only unconfirmed.
+    cursor = 42;
+    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
+    BOOST_CHECK(out.empty());
+
+    // Only excludes genesis.
+    cursor = 1;
+    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 9, true), error::success);
+    BOOST_CHECK_EQUAL(out.size(), 4u);
+
+    // Excludes block1a which has one confirmed touching tx.
+    cursor = 2;
+    BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 100, true), error::success);
+    BOOST_CHECK_EQUAL(out.size(), 3u);
 }
 
 // get_tx_history

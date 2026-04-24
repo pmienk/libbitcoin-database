@@ -38,109 +38,95 @@ namespace database {
 // server/electrum
 TEMPLATE
 code CLASS::get_unconfirmed_history(const stopper& cancel, histories& out,
-    const hash_digest& key, bool turbo) const NOEXCEPT
-{
-    address_link cursor{};
-    return get_unconfirmed_history(cancel, cursor, out, key, max_size_t, turbo);
-}
-
-// server/electrum
-TEMPLATE
-code CLASS::get_unconfirmed_history(const stopper& cancel,
-    address_link& cursor, histories& out, const hash_digest& key,
-    size_t limit, bool turbo) const NOEXCEPT
+    const hash_digest& key, size_t limit, bool turbo) const NOEXCEPT
 {
     tx_links txs{};
-    if (const auto ec = get_address_txs(cancel, cursor, txs, key, limit))
+    if (const auto ec = get_address_txs(cancel, txs, key, limit))
         return ec;
 
+    // There is no cursor for unconfirmed, since it's height-based.
     out.clear();
     out.resize(txs.size());
     return parallel_history_transform(cancel, turbo, out, txs,
-        [this](const tx_link& link, auto& cancel, auto& fail) NOEXCEPT
+        [this](const auto& link, auto& cancel, auto& fail) NOEXCEPT
         {
             if (cancel || fail) return history{};
-            const auto out = get_tx_unconfirmed_history(link);
-            if (!out.confirmed() && !out.valid()) fail = true;
+            const auto out = this->get_tx_unconfirmed_history(link);
+            if (out.fault()) fail = true;
             return out;
         });
 }
 
 // ununsed
 TEMPLATE
-code CLASS::get_confirmed_history(const stopper& cancel, histories& out,
-    const hash_digest& key, bool turbo) const NOEXCEPT
-{
-    address_link cursor{};
-    return get_confirmed_history(cancel, cursor, out, key, max_size_t, turbo);
-}
-
-// ununsed
-TEMPLATE
-code CLASS::get_confirmed_history(const stopper& cancel,
-    address_link& cursor, histories& out, const hash_digest& key,
-    size_t limit, bool turbo) const NOEXCEPT
-{
-    tx_links txs{};
-    if (const auto ec = get_address_txs(cancel, cursor, txs, key, limit))
-        return ec;
-
-    out.clear();
-    out.resize(txs.size());
-    return parallel_history_transform(cancel, turbo, out, txs,
-        [this](const tx_link& link, auto& cancel, auto& fail) NOEXCEPT
-        {
-            if (cancel || fail) return history{};
-            const auto out = get_tx_confirmed_history(link);
-            if (out.confirmed() && !out.valid()) fail = true;
-            return out;
-        });
-}
-
-// ununsed
-TEMPLATE
-code CLASS::get_history(const stopper& cancel, histories& out,
-    const hash_digest& key, bool turbo) const NOEXCEPT
-{
-    address_link cursor{};
-    return get_history(cancel, cursor, out, key, max_size_t, turbo);
-}
-
-// server/electrum
-TEMPLATE
-code CLASS::get_history(const stopper& cancel, address_link& cursor,
+code CLASS::get_confirmed_history(const stopper& cancel, height_link& cursor,
     histories& out, const hash_digest& key, size_t limit,
     bool turbo) const NOEXCEPT
 {
     tx_links txs{};
-    if (const auto ec = get_address_txs(cancel, cursor, txs, key, limit))
+    if (const auto ec = get_address_txs(cancel, txs, key, limit))
         return ec;
+
+    // Cursor is still advanced in the case of (integrity) failure.
+    // End is required because of the possiblity of intervening organization.
+    const auto start = cursor.is_terminal() ? zero : cursor.value;
+    const auto end = get_top_confirmed();
+    cursor = system::possible_narrow_cast<height_link::integer>(add1(end));
 
     out.clear();
     out.resize(txs.size());
     return parallel_history_transform(cancel, turbo, out, txs,
-        [this](const tx_link& link, auto& cancel, auto& fail) NOEXCEPT
+        [this, start, end](const auto& link, auto& cancel, auto& fail) NOEXCEPT
         {
             if (cancel || fail) return history{};
-            const auto out = get_tx_history(link);
-            if (!out.valid()) fail = true;
+            const auto out = this->get_tx_confirmed_history(link, start, end);
+            if (out.fault()) fail = true;
             return out;
         });
 }
 
-// History queries.
+// server/electrum
+TEMPLATE
+code CLASS::get_history(const stopper& cancel, height_link& cursor,
+    histories& out, const hash_digest& key, size_t limit,
+    bool turbo) const NOEXCEPT
+{
+    tx_links txs{};
+    if (const auto ec = get_address_txs(cancel, txs, key, limit))
+        return ec;
+
+    // Cursor is still advanced in the case of (integrity) failure.
+    // End is required because of the possiblity of intervening organization.
+    const auto start = cursor.is_terminal() ? zero : cursor.value;
+    const auto end = get_top_confirmed();
+    cursor = system::possible_narrow_cast<height_link::integer>(add1(end));
+
+    out.clear();
+    out.resize(txs.size());
+    return parallel_history_transform(cancel, turbo, out, txs,
+        [this, start, end](const auto& link, auto& cancel, auto& fail) NOEXCEPT
+        {
+            if (cancel || fail) return history{};
+            const auto out = this->get_tx_history(link, start, end);
+            if (out.fault()) fail = true;
+            return out;
+        });
+}
+
+// get_tx_history
 // ----------------------------------------------------------------------------
 
 TEMPLATE
-history CLASS::get_tx_history(const tx_link& link) const NOEXCEPT
+history CLASS::get_tx_history(const tx_link& link, size_t start,
+    size_t end) const NOEXCEPT
 {
-    return get_tx_history(get_tx_key(link), link);
+    return get_tx_history(get_tx_key(link), link, start, end);
 }
 
 // protected
 TEMPLATE
-history CLASS::get_tx_history(hash_digest&& key,
-    const tx_link& link) const NOEXCEPT
+history CLASS::get_tx_history(hash_digest&& key, const tx_link& link,
+    size_t start, size_t end) const NOEXCEPT
 {
     // history is invalid in default construction.
     if (link.is_terminal())
@@ -152,13 +138,8 @@ history CLASS::get_tx_history(hash_digest&& key,
     auto position = history::unconfirmed_position;
 
     const auto block = find_strong(link);
-    if (is_confirmed_block(block))
-    {
-        if (!get_height(height, block) ||
-            !get_tx_position(position, link, block))
-            return {};
-    }
-    else
+    const auto at = get_confirmed_height(block);
+    if (at.is_terminal())
     {
         if (!get_tx_fee(fee, link))
             fee = history::missing_prevout;
@@ -166,38 +147,50 @@ history CLASS::get_tx_history(hash_digest&& key,
         if (is_confirmed_all_prevouts(link))
             height = history::rooted_height;
     }
+    else if (system::is_limited(at.value, start, end))
+    {
+        // Invalid with unconfirmed_position signals no fault.
+        return { .position = history::unconfirmed_position };
+    }
+    else
+    {
+        height = at.value;
+        if (!get_tx_position(position, link, block))
+            return {};
+    }
 
     return { { std::move(key), height }, fee, position };
 }
 
 TEMPLATE
-history CLASS::get_tx_confirmed_history(const tx_link& link) const NOEXCEPT
+history CLASS::get_tx_confirmed_history(const tx_link& link, size_t start,
+    size_t end) const NOEXCEPT
 {
-    return get_tx_confirmed_history(get_tx_key(link), link);
+    return get_tx_confirmed_history(get_tx_key(link), link, start, end);
 }
 
 // protected
 TEMPLATE
-history CLASS::get_tx_confirmed_history(hash_digest&& key,
-    const tx_link& link) const NOEXCEPT
+history CLASS::get_tx_confirmed_history(hash_digest&& key, const tx_link& link,
+    size_t start, size_t end) const NOEXCEPT
 {
-    // history is invalid in default construction.
+    // history is invalid in default construction with position.
     if (link.is_terminal())
-        return { .position = zero };
+        return {};
 
     const auto block = find_strong(link);
+    const auto at = get_confirmed_height(block);
 
-    // Returns invalid (filtered) but also !confirmed().
-    if (!is_confirmed_block(block))
+    // Invalid with unconfirmed_position signals no fault.
+    if (at.is_terminal() || system::is_limited(at.value, start, end))
         return { .position = history::unconfirmed_position };
 
-    size_t height{}, position{};
-    if (!get_height(height, block) ||
-        !get_tx_position(position, link, block))
-        return { .position = zero };
+    size_t position{};
+    if (!get_tx_position(position, link, block))
+        return {};
 
     // Electrum uses fees only on unconfirmed (expensive).
-    return { { std::move(key), height }, history::missing_prevout, position };
+    return { { std::move(key), at.value }, history::missing_prevout, position };
 }
 
 TEMPLATE
@@ -211,13 +204,13 @@ TEMPLATE
 history CLASS::get_tx_unconfirmed_history(hash_digest&& key,
     const tx_link& link) const NOEXCEPT
 {
-    // history is invalid in default construction.
+    // history is invalid in default construction with position.
     if (link.is_terminal())
-        return { .position = history::unconfirmed_position };
+        return {};
 
-    // Returns invalid (filtered) but also confirmed().
-    if (is_confirmed_block(find_strong(link)))
-        return { .position = zero };
+    // Invalid with unconfirmed_position signals no fault.
+    if (!get_confirmed_height(find_strong(link)).is_terminal())
+        return { .position = history::unconfirmed_position };
 
     uint64_t fee{};
     if (!get_tx_fee(fee, link))
@@ -228,6 +221,9 @@ history CLASS::get_tx_unconfirmed_history(hash_digest&& key,
 
     return { { std::move(key), height }, fee, history::unconfirmed_position };
 }
+
+// get_spenders_history
+// ----------------------------------------------------------------------------
 
 // server/electrum
 TEMPLATE
@@ -254,10 +250,11 @@ histories CLASS::get_spenders_history(const hash_digest& key,
 // ----------------------------------------------------------------------------
 
 TEMPLATE
-code CLASS::get_address_txs(const stopper& cancel, address_link& cursor,
-    tx_links& out, const hash_digest& key, size_t limit) const NOEXCEPT
+code CLASS::get_address_txs(const stopper& cancel, tx_links& out,
+    const hash_digest& key, size_t limit) const NOEXCEPT
 {
     output_links links{};
+    address_link cursor{};
     if (const auto ec = to_address_outputs(cancel, cursor, links, key, limit))
         return ec;
 

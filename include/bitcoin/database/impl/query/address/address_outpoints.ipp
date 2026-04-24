@@ -117,30 +117,6 @@ code CLASS::get_address_outpoints(const stopper& cancel, outpoints& out,
         });
 }
 
-// TODO: server/native
-TEMPLATE
-code CLASS::get_address_outpoints(const stopper& cancel, address_link& cursor,
-    outpoints& out, const hash_digest& key, bool turbo) const NOEXCEPT
-{
-    out.clear();
-    output_links links{};
-    if (const code ec = to_address_outputs(cancel, cursor, links, key))
-        return ec;
-
-    return parallel_outpoint_transform(cancel, turbo, out, links,
-        [this](const output_link& link, auto& cancel, auto& fail) NOEXCEPT
-        {
-            if (cancel || fail)
-                return outpoint{};
-
-            const auto point = get_outpoint(link);
-            if (!point.point().is_valid())
-                fail = true;
-
-            return point;
-        });
-}
-
 // utilities
 // ----------------------------------------------------------------------------
 // private/static

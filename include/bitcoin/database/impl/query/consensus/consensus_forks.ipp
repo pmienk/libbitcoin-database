@@ -25,6 +25,24 @@
 namespace libbitcoin {
 namespace database {
 
+// get_confirmed
+// ----------------------------------------------------------------------------
+
+TEMPLATE
+height_link CLASS::get_confirmed_height(const header_link& link) const NOEXCEPT
+{
+    if (const auto height = get_height(link); !height.is_terminal())
+    {
+        // The block is confirmed (by height).
+        table::height::record confirmed{};
+        if (store_.confirmed.get(height, confirmed) &&
+            (confirmed.header_fk == link))
+            return height;
+    }
+
+    return {};
+}
+
 // protected fork readers.
 // ----------------------------------------------------------------------------
 // Protected against index pop (low contention) to ensure branch consistency.

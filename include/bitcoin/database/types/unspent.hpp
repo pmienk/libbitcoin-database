@@ -33,8 +33,11 @@ struct BCD_API unspent
     /// Filter out invalid unspent output elements and sort.
     static void filter_sort_and_dedup(std::vector<unspent>& unspent) NOEXCEPT;
 
-    /// The outpoint is valid (not defaulted).
+    /// The unspent is valid.
     bool valid() const NOEXCEPT;
+
+    /// A fault occured (and the unspent is not valid).
+    bool fault() const NOEXCEPT;
 
     /// The tx is confirmed in a block.
     bool confirmed() const NOEXCEPT;
