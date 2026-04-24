@@ -171,22 +171,22 @@ BOOST_AUTO_TEST_CASE(query_address__get_history__start__excludes_prior)
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 0, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
-    cursor = { 42 };
+    cursor = 42;
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     // Only unconfirmed.
-    cursor = { 42 };
+    cursor = 42;
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 9, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 4u);
         
     // Only excludes genesis.
-    cursor = { 1 };
+    cursor = 1;
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 100, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 8u);
 
     // Excludes block1a which has one confirmed touching tx.
-    cursor = { 2 };
+    cursor = 2;
     BOOST_CHECK_EQUAL(query.get_history(cancel, cursor, out, hash, 100, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 7u);
 }
@@ -385,17 +385,17 @@ BOOST_AUTO_TEST_CASE(query_address__get_confirmed_history__start__excludes_prior
     BOOST_CHECK(out.empty());
 
     // Only unconfirmed.
-    cursor = { 42 };
+    cursor = 42;
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 8, true), error::depth_limited);
     BOOST_CHECK(out.empty());
 
     // Only excludes genesis.
-    cursor = { 1 };
+    cursor = 1;
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 9, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 4u);
 
     // Excludes block1a which has one confirmed touching tx.
-    cursor = { 2 };
+    cursor = 2;
     BOOST_CHECK_EQUAL(query.get_confirmed_history(cancel, cursor, out, hash, 100, true), error::success);
     BOOST_CHECK_EQUAL(out.size(), 3u);
 }

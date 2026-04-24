@@ -51,7 +51,7 @@ code CLASS::get_unconfirmed_history(const stopper& cancel, histories& out,
         [this](const auto& link, auto& cancel, auto& fail) NOEXCEPT
         {
             if (cancel || fail) return history{};
-            const auto out = get_tx_unconfirmed_history(link);
+            const auto out = this->get_tx_unconfirmed_history(link);
             if (out.fault()) fail = true;
             return out;
         });
@@ -79,7 +79,7 @@ code CLASS::get_confirmed_history(const stopper& cancel, height_link& cursor,
         [this, start, end](const auto& link, auto& cancel, auto& fail) NOEXCEPT
         {
             if (cancel || fail) return history{};
-            const auto out = get_tx_confirmed_history(link, start, end);
+            const auto out = this->get_tx_confirmed_history(link, start, end);
             if (out.fault()) fail = true;
             return out;
         });
@@ -107,7 +107,7 @@ code CLASS::get_history(const stopper& cancel, height_link& cursor,
         [this, start, end](const auto& link, auto& cancel, auto& fail) NOEXCEPT
         {
             if (cancel || fail) return history{};
-            const auto out = get_tx_history(link, start, end);
+            const auto out = this->get_tx_history(link, start, end);
             if (out.fault()) fail = true;
             return out;
         });
