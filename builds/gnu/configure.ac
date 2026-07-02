@@ -83,6 +83,7 @@ AC_ARG_ENABLE([isystem],
     [enable_isystem=$enableval],
     [enable_isystem=no])
 AC_MSG_RESULT([$enable_isystem])
+AM_CONDITIONAL([ENABLE_ISYSTEM], [test "x${enable_isystem}" != "xno"])
 
 AC_MSG_CHECKING([--with-pkgconfigdir option])
 AC_ARG_WITH([pkgconfigdir],
@@ -100,6 +101,7 @@ AC_ARG_ENABLE([ndebug],
     [enable_ndebug=$enableval],
     [enable_ndebug=no])
 AC_MSG_RESULT([$enable_ndebug])
+AM_CONDITIONAL([ENABLE_NDEBUG], [test "x${enable_ndebug}" != "xno"])
 AS_IF([test "x${enable_ndebug}" != "xno"], [AC_DEFINE([NDEBUG])])
 
 AS_IF([test "x${enable_shared}" != "xno"], [AC_DEFINE([BOOST_ALL_DYN_LINK])])
